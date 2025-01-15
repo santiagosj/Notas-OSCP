@@ -29,3 +29,17 @@ fi
 sudo cp "$TEMPLATE_PATH" "$NOTE_PATH"
 sudo nano "$NOTE_PATH"
 
+# Mensaje de commit con el ID de la nota
+COMMIT_MESSAGE="Add note: $CATEGORY/$FILENAME"
+
+# Verificar si el repositorio Git está inicializado
+if [ -d "$NOTES_DIR/.git" ]; then
+    cd "$NOTES_DIR"
+    git add "$CATEGORY/$FILENAME"
+    git commit -m "$COMMIT_MESSAGE"
+    git push origin main
+    echo "Nota sincronizada con el repositorio remoto."
+else
+    echo "El directorio $NOTES_DIR no está configurado como repositorio Git. Configúralo manualmente."
+fi
+

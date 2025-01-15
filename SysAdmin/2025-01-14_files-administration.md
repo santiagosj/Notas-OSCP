@@ -1,8 +1,6 @@
-# Admin: Comandos de administracion de archivos
+# SysAdmin: Comandos de administracion de archivos
 
-## Fecha: 14/01/2025
-## Host: {HOST}
-## IP: {IP}
+### Fecha: 14/01/2025
 
 ---
 
