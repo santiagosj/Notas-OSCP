@@ -11,20 +11,18 @@ Follow the steps from this section to gain access to TinyFileManager on VM #1 (B
 3. hydra
 ## Procedimiento y comandos
 #### Paso 1: Escanemos el host para enumerar servicios:
-- `nmap -sV --open 192.168.202.202 -oN vm-3.nmap-result.txt `
+- `nmap -sV --open 192.168.232.201 -oN vm-4.nmap-result.txt `
 ```
-Nmap scan report for 192.168.202.202
+Nmap scan report for 192.168.232.201
 Host is up (0.19s latency).
-Not shown: 993 closed tcp ports (reset)
-PORT     STATE SERVICE       VERSION
-21/tcp   open  ftp           FileZilla ftpd 1.4.1
-135/tcp  open  msrpc         Microsoft Windows RPC
-139/tcp  open  netbios-ssn   Microsoft Windows netbios-ssn
-445/tcp  open  microsoft-ds?
-3389/tcp open  ms-wbt-server Microsoft Terminal Services
-5985/tcp open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
-8000/tcp open  http          Golang net/http server (Go-IPFS json-rpc or InfluxDB API)
-Service Info: OS: Windows; CPE: cpe:/o:microsoft:windows
+Not shown: 998 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 8.9p1 Ubuntu 3 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    PHP cli server 5.5 or later
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 13.39 seconds
 ```
 #### Obtenemos con Burp la cabecera:
 - Hacemos un intento de login con el interceptor activado:
