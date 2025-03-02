@@ -37,7 +37,8 @@
 ### Diagrama UML
 
 ```mermaid
-graph 
+graph
+ 
   A[Seguridad en Windows]--> | Define Permisos y Restricciones | B(Usuarios y Grupos)
   A-->C(Niveles de Integridad - MIC)
   
@@ -57,5 +58,35 @@ graph
   
   J -->|Si es necesario| K[UAC - Elevación de Privilegios]
   K -->|Aprueba o deniega| L(Acceso Final al Objeto)
+
 ```
 
+### Diagrama Secuencial
+
+```mermaid
+sequenceDiagram
+  participant Usuario
+  participant Sistema
+  participant Seguridad_Windows
+  participant Objeto (Archivo/Proceso)
+  
+  Usuario->>Sistema: Inicia sesión
+  Sistema->>Seguridad_Windows: Autenticación y generación del Token de Acceso
+  Seguridad_Windows->>Sistema: Devuelve Token con SID y permisos
+  
+  Usuario->>Sistema: Solicita acceso a un objeto
+  Sistema->>Objeto (Archivo/Proceso): Verifica ACL y MIC
+  Objeto (Archivo/Proceso)->>Seguridad_Windows: ¿Permisos válidos según ACL y MIC?
+  Seguridad_Windows-->>Sistema: Respuesta (Permitido o Denegado)
+  
+  alt Si el acceso es permitido
+    Sistema->>Objeto (Archivo/Proceso): Otorga acceso al usuario
+  else Si el acceso es denegado
+    Sistema->>Usuario: Acceso denegado (UAC puede solicitar elevación)
+    Usuario->>Sistema: Solicita elevación de privilegios (Ej. "Ejecutar como Admin")
+    Sistema->>Seguridad_Windows: Verifica permisos administrativos
+    Seguridad_Windows-->>Sistema: Permiso concedido o denegado
+    Sistema->>Objeto (Archivo/Proceso): Si se concede, permite acceso
+  end
+
+```
