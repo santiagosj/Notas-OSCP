@@ -36,30 +36,7 @@
 ```
 ### Diagrama UML
 
-```mermaid
-graph
- 
-  A[Seguridad en Windows]--> | Define Permisos y Restricciones | B(Usuarios y Grupos)
-  A-->C(Niveles de Integridad - MIC)
-  
-  B-->B1[Usuarios]
-  B-->B2[Grupos]
-  B1-->|Tiene permisos sobre| D[(Objetos, Archivos, Carpetas, Claves de Registro)]
-  B2-->|Administra permisos| D
-
-  D-->|Protegido por|E{ACL - Lista de Control de Accesos}
-  E-->|Define acceso|F[DACL - Control Discecional]
-  E-->|Registra eventos|G[SACL - Auditoria]
-
-  D-->|Validacion|H(Proceso de Evaluacion de Permisos)
-  H-->|Token de acceso generalizado|I[Token de Acceso]
-  I-->|Verifica nieveles|C
-  C -->|Impide escalar| J{Restricciones por Integridad}
-  
-  J -->|Si es necesario| K[UAC - Elevación de Privilegios]
-  K -->|Aprueba o deniega| L(Acceso Final al Objeto)
-
-```
+![Diagrama de permisos en Windows](https://github.com/santiagosj/Notas-OSCP/Info/blob/main/docs/images/mermaid-diagram-20250302142009.png)
 
 ### Diagrama Secuencial
 
