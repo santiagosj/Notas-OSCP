@@ -18,6 +18,8 @@ net user
 net localgroup Administrators
 quser
 Get-LocalUser | Select Name,Enabled,LastLogon
+Get-LocalGroupMember <group>
+
 ```
 
 ### 3. Permisos y archivos sensibles
@@ -42,6 +44,9 @@ Get-Process | Select-Object Name,Id,Path
 netstat -ano
 sc query state= all
 Get-Service | Select Name,StartType,Status
+Get-CimInstance -ClassName win32_service | Select Name,State,PathName | Where-Object {$_.State -like 'Running'}
+Get-CimInstance -ClassName win32_service | Select Name, StartMode | Where-Object {$_.Name -like 'mysql'} // ejemplo con mySQL
+Get-ModifiableServiceFile // Servicios que el usuario puede modificar
 ```
 
 ### 6. Tareas programadas y servicios inseguros
@@ -72,6 +77,24 @@ qwinsta
 query user
 netsh advfirewall show currentprofile
 ```
+### 10. Aplicaciones instaladas:
+```
+Get-ItemProperty "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*" | select displayname
+Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" | select displayname
+```
+### 11. Archivos de bases de datos y configuracion
+```
+Get-ChildItem -Path C:\ -Include *.kdbx -File -Recurse -ErrorAction SilentlyContinue
+Get-ChildItem -Path C:\xampp -Include *.txt,*.ini -File -Recurse -ErrorAction SilentlyContinue
+Get-ChildItem -Path C:\Users\dave\ -Include *.txt,*.pdf,*.xls,*.xlsx,*.doc,*.docx -File -Recurse -ErrorAction SilentlyContinue
+```
+### 12. Powershell info, history, user trace
+```
+Get-History
+(Get-PSReadlineOption).HistorySavePath
+
+```
+
 
 ## 💥 Sección 2: Explotación
 
