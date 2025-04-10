@@ -1,4 +1,4 @@
-# Pivoting y Portforgarding: Metasploit/meterpreter
+# Pivoting y Portforwarding: Metasploit/meterpreter
 
 ## 🧭 [1] Enumerar interfaces en la máquina comprometida
 
