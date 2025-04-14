@@ -24,6 +24,10 @@ Get-Forest
 
 # Trusts (confianzas entre dominios)
 Get-DomainTrust
+
+# Obtener Dominio
+
+Get-NetDomain
 ```
 
 ---
@@ -42,6 +46,14 @@ Get-DomainUser -Properties "PasswordNeverExpires" | Where-Object {$_.PasswordNev
 
 # Buscar usuarios con la opción "No puede cambiar contraseña"
 Get-DomainUser -Properties "CannotChangePassword" | Where-Object {$_.CannotChangePassword -eq "True"}
+
+# Enumerar Usuarios especificos
+
+Get-NetUser
+
+Get-NetUser | select cn
+
+Get-NetUser | select cn,pwdlastset,lastlogon
 ```
 
 ---
@@ -57,6 +69,14 @@ Get-DomainGroupMember -Identity "Administradores del dominio"
 
 # Buscar grupos con miembros externos (interdominio)
 Get-DomainForeignGroupMember
+
+# Listar grupos especificos:
+Get-NetGroup <opciones>
+
+Get-NetGroup | select cn
+
+Get-NetGroup "Sales Department" | select member
+
 ```
 
 ---
