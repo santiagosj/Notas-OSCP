@@ -87,11 +87,20 @@ Get-NetGroup "Sales Department" | select member
 # Enumerar todos los equipos unidos al dominio
 Get-DomainComputer
 
+Get-NetComputer
+
 # Equipos Windows 10
 Get-DomainComputer | Where-Object {$_.OperatingSystem -like "*Windows 10*"}
 
 # Equipos con sesiones activas
 Get-NetSession -ComputerName <nombre_equipo>
+
+# Equipos | select filter
+
+Get-NetComputer
+
+Get-NetComputer | select <option1,option2,etc>
+
 ```
 
 ---
@@ -106,7 +115,12 @@ Get-NetLocalGroup -ComputerName <nombre_equipo>
 Get-NetLoggedon -ComputerName <nombre_equipo>
 
 # Ver usuarios que han iniciado sesión remotamente (sesiones SMB)
-Get-NetSession -ComputerName <nombre_equipo>
+Get-NetSession -ComputerName <nombre_equipo> 
+
+# Agregar opcionalmente el flag -Verbose para obtener una salida explicita
+
+Get-NetSession -ComputerName <nombre_equipo> -Verbose
+
 ```
 
 ---
@@ -161,5 +175,111 @@ Get-DomainOU -Properties gplink
 - Bajo restricciones, ejecutar PowerView de forma "reflectiva" (sin importar el módulo directamente) usando técnicas como `Invoke-Expression` o `IEX (New-Object Net.WebClient).DownloadString(...)`.
 - Uso de `-SearchBase` para limitar el scope de búsqueda a una OU específica.
 - Uso de `-LDAPFilter` para búsquedas más precisas.
+
+
+## 🚪 Enumeración para Movimiento Lateral y Reconocimiento de Sesiones (Post-Explotación)
+
+Estos comandos de PowerView son clave para identificar oportunidades de escalada de privilegios, usuarios conectados, y caminos de pivote dentro de un dominio comprometido.
+
+---
+
+### 🧑‍💼 Enumerar Usuarios con Sesiones Activas Remotas (SMB)
+
+```powershell
+# Ver sesiones SMB activas en un equipo remoto
+Get-NetSession -ComputerName files04
+Get-NetSession -ComputerName web04
+
+# Enumerar en todos los equipos conocidos
+Get-DomainComputer | ForEach-Object { Get-NetSession -ComputerName $_.Name }
+```
+
+---
+
+### 🔎 Usuarios Logueados en Equipos Remotos
+
+```powershell
+# Ver usuarios que han iniciado sesión interactivamente o por servicios
+Get-NetLoggedon -ComputerName files04
+
+# Automatizar para varios equipos
+Get-DomainComputer | ForEach-Object { Get-NetLoggedon -ComputerName $_.Name }
+```
+
+---
+
+### 📂 Enumerar Carpetas Compartidas
+
+```powershell
+# Compartidos accesibles en un host remoto
+Invoke-ShareFinder -ComputerName files04
+
+# Buscar en todos los equipos
+Invoke-ShareFinder
+```
+
+---
+
+### 🔑 Enumerar Administradores Locales (Privilegios Elevados)
+
+```powershell
+# Administradores locales de un equipo
+Get-NetLocalGroup -ComputerName web04
+
+# Buscar en todos los equipos
+Get-DomainComputer | ForEach-Object { Get-NetLocalGroup -ComputerName $_.Name }
+```
+
+---
+
+### 🔹 Buscar Equipos donde un Usuario Tiene Acceso
+
+```powershell
+# Ver en qué equipos un usuario tiene sesión activa (requiere permisos)
+Find-DomainUserLocation -UserName juanperez
+```
+
+---
+
+### 🎓 Detectar Administradores de Dominio con Sesión Abierta (Target para Token Theft)
+
+```powershell
+# Usuarios privilegiados conectados en algún host
+
+Find-LocalAdminAccess
+
+Get-DomainGroupMember -Identity "Administradores del dominio" | ForEach-Object {
+    Find-DomainUserLocation -UserName $_.SamAccountName
+}
+```
+
+---
+
+### 🧬 Enumerar SPNs para Kerberoasting
+
+```powershell
+# Buscar cuentas con SPNs (candidatos a Kerberoasting)
+Get-DomainUser -SPN
+```
+
+---
+
+### 🚨 Detectar Delegación (Escenario de Abuso)
+
+```powershell
+# Equipos con delegación sin restricciones
+Get-DomainComputer -Unconstrained
+
+# Equipos con delegación basada en recursos
+Get-DomainComputer -TrustedToAuth
+```
+
+---
+
+### ✨ Tips
+
+- Combinar estos comandos con BloodHound para visualizar paths de ataque.
+- Se puede filtrar resultados ruidosos usando `Where-Object` y expresiones condicionales.
+- Usar `Out-File` o `Export-Csv` para guardar resultados y analizarlos offline.
 
 
