@@ -136,6 +136,10 @@ Get-DomainComputer -Unconstrained
 
 # Delegación con restricciones (Resource-Based Constrained Delegation - RBCD)
 Get-DomainComputer -TrustedToAuth
+
+Get-NetUser -SPN | select samaccountname,serviceprincipalname
+
+setspn -L iis_service
 ```
 
 ---
