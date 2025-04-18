@@ -163,15 +163,60 @@ Get-ObjectAcl -Identity "usuario/grupo" | ? {$_.ActiveDirectoryRights -eq "Gener
 ---
 ## Traducción SID
 
-```
+```powershell
+# Traduce un SID a Normal Name
 Convert-SidToName S-1-5-21-1987370270-658905905-1781884369-1104
 
 # se pueden agregar separados por comas ","
-
 "S-1-5-21-1987370270-658905905-1781884369-512","S-1-5-21-1987370270-658905905-1781884369-1104","S-1-5-32-548","S-1-5-18","S-1-5-21-1987370270-658905905-1781884369-519" | Convert-SidToName
 
 ```
 ---
+
+## Objetos compartidos
+```powershell
+
+# Enumerar todos los recursos compartidos conocidos en el dominio:
+Find-DomainShare
+
+# Enumerar únicamente los recursos compartidos accesibles (requiere permisos de lectura):
+Find-DomainShare -CheckShareAccess
+
+# Enumerar recursos compartidos de un equipo específico:
+Invoke-ShareFinder -ComputerName <ComputerName>
+
+# Filtrar recursos compartidos con control de acceso débil o escritura posible (útil para pivoting y exfiltración):
+Invoke-ShareFinder -CheckAccess -Verbose
+
+# Buscar recursos compartidos en una OU específica:
+Get-NetOU | %{ Invoke-ShareFinder -ComputerName $_.Name }
+
+# Obtener recursos compartidos de una lista de hosts:
+Invoke-ShareFinder -ComputerFile .\hosts.txt
+
+# Validar si un recurso compartido específico es accesible:
+Test-Path \\<ComputerName>\<ShareName>\
+
+# Leer directorios y archivos de un recurso compartido manualmente:
+ls \\<ComputerName>\<ShareName>\
+cat \\<ComputerName>\<ShareName>\file.txt
+cat \\<ComputerName>\<ShareName>\config.xml
+
+# Leer contenido con PowerShell:
+Get-ChildItem \\<ComputerName>\<ShareName>\ -Recurse -Force
+Get-Content \\<ComputerName>\<ShareName>\sensitive.txt
+
+# Montar recurso compartido de forma temporal como unidad:
+New-PSDrive -Name Z -PSProvider FileSystem -Root \\<ComputerName>\<ShareName>\
+Get-ChildItem Z:\ -Recurse
+Remove-PSDrive -Name Z
+
+# Buscar archivos sensibles en recursos compartidos accesibles:
+Invoke-FileFinder -ShareList \\<ComputerName>\<ShareName>\ -Terms *pass*,*cred*,*key*,*config*,*.kdbx,*.pfx
+
+# Alternativa sin PowerView: enumerar shares vía .NET
+([System.IO.Directory]::GetDirectories("\\<ComputerName>\")).FullName
+```
 
 ## 📍 Buscar Objetivos Interesantes
 
