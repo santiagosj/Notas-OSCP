@@ -31,6 +31,9 @@ netstat -tulnp  # Alternativa si existe
 ```bash
 ps aux | grep -E 'apache|nginx|mysql|sshd'
 ```
+```
+watch -n 1 "ps -aux | grep pass"
+```
 
 3. **Identificar puertos y servicios con nmap (si está permitido):**
 
@@ -63,6 +66,12 @@ journalctl -u apache2
 ```bash
 ls /etc/systemd/system/
 chkconfig --list 2>/dev/null
+```
+
+8. **Monitorear trafico**
+
+```bash
+sudo tcpdump -i lo -A | grep "pass"
 ```
 
 ---
