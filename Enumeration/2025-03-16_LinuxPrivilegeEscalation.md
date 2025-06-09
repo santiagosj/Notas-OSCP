@@ -29,6 +29,10 @@ find / -perm -4000 2>/dev/null   # Binarios con SUID
 find / -perm -2000 2>/dev/null   # Binarios con SGID
 find / -type f -writable 2>/dev/null  # Archivos con permisos de escritura
 find /home -name '.*history' 2>/dev/null  # Historial de comandos
+find / -type f -perm -g=w -group <grupo> 2>/dev/null # Archivos con permiso de escritura por el grupo
+find / -type f -writable -user $(whoami) 2>/dev/null # Archivos escribibles por tu usuario actual (sin importar grupo)
+find / -writable -group <grupo> 2>/dev/null # directorios (para escribir archivos dentro)
+find / -type f -perm -g=w -perm -111 -group <grupo> 2>/dev/null # Buscar archivos ejecutables escribibles por el grupo
 ```
 
 ### 4️⃣ Procesos y tareas en ejecución
