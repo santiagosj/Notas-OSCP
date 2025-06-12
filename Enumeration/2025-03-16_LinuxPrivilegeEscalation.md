@@ -9,6 +9,7 @@ uname -a                   # Versión del kernel
 cat /etc/os-release        # Información de la distribución
 cat /etc/issue							
 arch                       # Arquitectura del sistema
+sudo -V
 ```
 
 ### 2️⃣ Usuarios y grupos
