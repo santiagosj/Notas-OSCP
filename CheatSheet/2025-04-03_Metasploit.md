@@ -17,7 +17,18 @@ sudo systemctl enable postgresql
 db_status
 ```
 
----
+```bash
+# Resolucion de problemas
+
+sudo msfdb delete
+
+sudo msfdb init
+
+# o
+sudo msfdb reinit
+```
+
+
 
 ## 🗂️ Workspaces
 
