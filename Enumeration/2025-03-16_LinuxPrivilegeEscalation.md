@@ -34,6 +34,7 @@ find / -type f -perm -g=w -group <grupo> 2>/dev/null # Archivos con permiso de e
 find / -type f -writable -user $(whoami) 2>/dev/null # Archivos escribibles por tu usuario actual (sin importar grupo)
 find / -writable -group <grupo> 2>/dev/null # directorios (para escribir archivos dentro)
 find / -type f -perm -g=w -perm -111 -group <grupo> 2>/dev/null # Buscar archivos ejecutables escribibles por el grupo
+find /<directorio> -type d -perm -2 -ls 2>/dev/null
 ```
 
 ### 4️⃣ Procesos y tareas en ejecución
