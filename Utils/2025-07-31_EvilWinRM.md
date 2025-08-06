@@ -25,3 +25,10 @@ Get-Process | ? { $_.Path -like "*ligolo*" }
 tasklist | findstr ligolo
 
 ```
+#### Seleccion y manipulacion de procesos:
+
+```powershell
+Get-Process | Where-Object { $_.Name -like "*<process>*" } | Stop-Process -Force
+
+Get-Process | ? { $_.Path -like "*<process>*" }
+```
