@@ -60,5 +60,11 @@ Funciones disponibles:
   Invoke-SharpHoundDump [-collection <tipo>]
 ```
 
+#### ligolo listener
+
+```bash
+listener_add --addr <ip_destino:puerto> --to <ip_kali:puerto> --tcp
+```
+
 
 

