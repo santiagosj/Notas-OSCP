@@ -37,6 +37,27 @@ find / -type f -perm -g=w -perm -111 -group <grupo> 2>/dev/null # Buscar archivo
 find /<directorio> -type d -perm -2 -ls 2>/dev/null
 ```
 
+### Credenciales
+
+```bash
+# opciones:
+
+--include="*.ini"
+--include="*.yaml"
+--include="*.yml"
+--include="*.json"
+--include="*.conf"
+
+grep -rniI --include="*.conf" --include="*.ini" --include="*.yaml" --include="*.yml" --include="*.json" "PASSW\|PASSWD\|PASSWORD\|PWD" / 2>/dev/null
+
+find / -exec ls -lad $PWD/* "{}" 2>/dev/null \; | grep -i -I "passw\|pwd"
+
+locate 'passw'
+locate 'pwd'
+locate '*.php'
+```
+
+
 ### 4️⃣ Procesos y tareas en ejecución
 
 ```bash
