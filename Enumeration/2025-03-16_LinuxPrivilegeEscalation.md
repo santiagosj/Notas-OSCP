@@ -53,11 +53,37 @@ find / -type f -name '*.db' 2>/dev/null		    # Archivos base de datos
 --include="*.yml"
 --include="*.json"
 --include="*.conf"
+--include="*.xml"
 
 grep -rniI --include="*.conf" --include="*.ini" --include="*.yaml" --include="*.yml" --include="*.json" "PASSW\|PASSWD\|PASSWORD\|PWD" / 2>/dev/null
 
 # V2
 grep -rniI --include=*.{conf,ini,yaml,yml,json,php} "PASSW\|PASSWD\|PASSWORD\|PWD" / 2>/dev/null
+
+# Buscar en el directorio sobre el que estamos posicionados, ejemplo con .xml
+
+grep -RiE "user|username|login|password|passwd|secret|apikey|api_key|token" --include="*.xml" .
+
+# Encontrar todos los .xml en el directorio actual
+
+find . -type f -iname "*.xml"
+
+# ver nombre de archivo + línea coincidente
+grep -RniE "user|username|login|password|passwd|secret|apikey|api_key|token" --include="*.xml" .
+
+#más “limpio” (solo nombre de archivo)
+
+grep -RliE "user|username|login|password|passwd|secret|apikey|api_key|token" --include="*.xml" .
+
+# solo los archivos a los que tenés permiso de lectura
+
+find . -type f -readable -exec grep -iE "password|secret|token" {} \; 2>/dev/null
+
+# nombres de archivos que sugieran credenciales en directorio actual
+
+find . -type f -iname "*pass*" -o -iname "*cred*" -o -iname "*secret*" -o -iname "*.pem" -o -iname "*.key" -o -iname "*.id_rsa"
+
+
 
 find / -exec ls -lad $PWD/* "{}" 2>/dev/null \; | grep -i -I "passw\|pwd"
 
