@@ -38,6 +38,7 @@ find / -type f -perm -g=w -group <grupo> 2>/dev/null       # Archivos con permis
 find / -type f -writable -user $(whoami) 2>/dev/null       # Archivos escribibles por tu usuario actual (sin importar grupo)
 find / -writable -group <grupo> 2>/dev/null                # directorios (para escribir archivos dentro)
 find / -type f -perm -g=w -perm -111 -group <grupo> 2>/dev/null       # Buscar archivos ejecutables escribibles por el grupo
+find / -type f -perm -g=w -uid 0 -mtime -7 2>/dev/null # Buscar ficheros en paths críticos con group+w
 find /<directorio> -type d -perm -2 -ls 2>/dev/null
 find / -user root -writable 2>/dev/null             # Archivos root escribibles
 find / -type f -name '*.db' 2>/dev/null		    # Archivos base de datos
@@ -116,6 +117,7 @@ systemctl list-units --type=service --all
 ### 6️⃣ Cron jobs y timers
 
 ```bash
+ps -auxf | grep -E 'cron'
 ls -lah /etc/cron*           # Revisar cron jobs
 cat /etc/crontab            # Tareas programadas
 systemctl list-timers       # Timers activos
