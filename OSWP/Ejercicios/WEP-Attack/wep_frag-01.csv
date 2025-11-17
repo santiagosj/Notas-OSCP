@@ -1,0 +1,8 @@
+
+BSSID, First time seen, Last time seen, channel, Speed, Privacy, Cipher, Authentication, Power, # beacons, # IV, LAN IP, ID-length, ESSID, Key
+B2:EC:DD:97:BD:10, 2025-10-27 16:53:14, 2025-10-27 16:58:51, 11,  54, WEP, WEP,   , -46,     3018,     2894,   0.  0.  0.  0,  18, Laboratoriot2.4GHz, 
+
+Station MAC, First time seen, Last time seen, Power, # packets, BSSID, Probed ESSIDs
+E2:EB:83:F0:F9:8B, 2025-10-27 16:53:24, 2025-10-27 16:58:51, -40,     6033, B2:EC:DD:97:BD:10,
+54:C9:FF:02:F3:85, 2025-10-27 16:54:19, 2025-10-27 16:56:27,  -1,       30, B2:EC:DD:97:BD:10,
+

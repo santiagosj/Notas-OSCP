@@ -66,6 +66,7 @@ Logs y formatos
     - .kismet.pcap / .pcapng (trazas de paquetes)
     - kismet.db (base de datos SQLite)
 - Abrir PCAP con Wireshark:
+
 ```bash
 wireshark /ruta/archivo.pcap
 ```
@@ -170,5 +171,3 @@ Atajos: checklist rápido antes de capturar
 4. Verificar que la UI muestra interfaces/drones.
 5. Iniciar logging y comprobar archivos de salida.
 6. Exportar PCAP para análisis en Wireshark si es necesario.
-
-Fin del cheatsheet — referirse a la documentación oficial para detalles avanzados y opciones específicas de versión.

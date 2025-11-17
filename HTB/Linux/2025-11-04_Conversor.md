@@ -1,14 +1,5 @@
-# {CATEGORÍA}: {DESCRIPCIÓN}
-
-## Fecha: {FECHA}
-## Host: {HOST}
-## IP: {IP}
-## Objetivo
-{OBJETIVO}
-## Herramientas
-1. tool - 1 
-2. tool - 2
-## Procedimiento y comandos
+# HTB: Conversor
+## Host: Linux
 #### Paso 1: Discovery
 * Directory
 ```bash

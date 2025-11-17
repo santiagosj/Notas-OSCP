@@ -1,8 +1,9 @@
-### 🛠️ Técnicas de Port Forwarding con Chisel y Ligolo-ng
-#### 📌 1. Chisel
+# 🛠️ Port Forwarding | Chisel - SSH - Ligolo-ng |
+## 📌 1. Chisel
 
 Chisel es una herramienta para tunelizar tráfico TCP a través de HTTP/HTTPS. Ideal para entornos donde solo se permite tráfico web saliente.
-🔁 Reverse Port Forwarding (RPF)
+
+### 🔁 Reverse Port Forwarding (RPF)
 
 > Acceder desde Kali a un puerto interno de una red remota (pivoting clásico).
 
@@ -13,9 +14,16 @@ chisel server -p 8000 --reverse
 2. Cliente (host comprometido):
 ```bash
 chisel client <KALI_IP>:8000 R:4444:10.10.10.1:445
+# Alternativamente
+chisel client <KALI_IP>:8000 R:socks
 ```
-Esto hace que en Kali puedas acceder a 10.10.10.1:445 mediante localhost:4444.
-🔀 Forward Port Forwarding (FPF)
+Esto hace que en Kali puedamos acceder a 10.10.10.1:445 mediante localhost:4444 o ejecutar comandos con proxychains
+
+```bash
+proxychains curl -i <internal-ip> 
+# etc
+```
+### 🔀 Forward Port Forwarding (FPF)
 
 > Exponer un puerto local al equipo remoto.
 
@@ -31,23 +39,23 @@ chisel server -p 8000
 chisel client <REMOTE_IP>:8000 L:8080:127.0.0.1:80
 ```
 
-Permite al host remoto acceder al localhost:80 de Kali mediante su localhost:8080.
+* Permite al host remoto acceder al localhost:80 de Kali mediante su localhost:8080.
 📥 SOCKS Proxy
 
-    Crear un proxy SOCKS5 para exploración dinámica (uso con proxychains o herramientas que soporten SOCKS).
+### Crear un proxy SOCKS5 para exploración dinámica (uso con proxychains o herramientas que soporten SOCKS).
 
-Servidor:
-
+#### Servidor:
+```bash
 chisel server -p 8000 --socks5
-
-Cliente:
-
+```
+#### Cliente:
+```bash
 chisel client <KALI_IP>:8000 socks
+```
+[HDKS - Chisel Port Forwarding Guide](https://exploit-notes.hdks.org/exploit/network/port-forwarding/chisel/)
 
-[https://exploit-notes.hdks.org/exploit/network/port-forwarding/chisel/](HDKS - Chisel Port Forwarding Guide)
-
-#### 📝 SSH Port Forwarding Cheatsheet
-1. Local Port Forwarding (L → R)
+## 📝 SSH Port Forwarding Cheatsheet
+### 1. Local Port Forwarding (L → R)
 
 *  Redirige un puerto local hacia un destino accesible desde el servidor remoto.
 👉 Se usa cuando querés acceder desde tu máquina a un servicio interno de la red remota.
@@ -56,36 +64,36 @@ chisel client <KALI_IP>:8000 socks
 ssh -L [puerto_local]:[host_destino]:[puerto_destino] usuario@servidor
 ```
 
-Ejemplos:
+#### Ejemplos:
 
-Acceder a MySQL en una red remota:
+* Acceder a MySQL en una red remota:
 
 ```bash
 ssh -L 3306:127.0.0.1:3306 user@remote_host
 ```
 
-👉 Ahora podés conectarte a localhost:3306 como si fuera el MySQL del servidor remoto.
+👉 Ahora podemos conectarnos a localhost:3306 como si fuera el MySQL del servidor remoto.
 
-Redirigir un sitio web interno de la red remota:
+* Redirigir un sitio web interno de la red remota:
 
 ```bash
 ssh -L 8080:intranet.local:80 user@remote_host
 ```
 
-👉 Abrís en tu navegador http://localhost:8080.
+👉 Abrir en el navegador http://localhost:8080.
 
-2. Remote Port Forwarding (R → L)
+### 2. Remote Port Forwarding (R → L)
 
-Expone un puerto del servidor remoto hacia tu máquina local (o a un host accesible desde ella).
-👉 Útil para acceder a tu servicio local desde fuera.
+Expone un puerto del servidor remoto hacia nuestra máquina local (o a un host accesible desde ella).
+👉 Útil para acceder a nuestro servicio local desde fuera.
 
 ```bash
 ssh -R [puerto_remoto]:[host_local]:[puerto_local] usuario@servidor
 ```
 
-Ejemplos:
+#### Ejemplos:
 
-Exponer tu servidor web local (puerto 8000) en un VPS remoto:
+* Exponer tu servidor web local (puerto 8000) en un VPS remoto:
 
 ```bash
 ssh -R 8080:127.0.0.1:8000 user@remote_host
@@ -93,7 +101,7 @@ ssh -R 8080:127.0.0.1:8000 user@remote_host
 
 👉 Desde el servidor remoto, accedés a localhost:8080 y ves tu web local.
 
-Dar acceso externo (requiere GatewayPorts yes en sshd_config):
+* Dar acceso externo (requiere GatewayPorts yes en sshd_config):
 
 ```bash
 ssh -R 0.0.0.0:8080:127.0.0.1:8000 user@remote_host
@@ -101,7 +109,7 @@ ssh -R 0.0.0.0:8080:127.0.0.1:8000 user@remote_host
 
 👉 Otros pueden acceder a http://remote_host:8080.
 
-3. Dynamic Port Forwarding (SOCKS Proxy)
+### 3. Dynamic Port Forwarding (SOCKS Proxy)
 
 Crea un proxy SOCKS5 en tu máquina local, que redirige tráfico hacia cualquier host a través del servidor SSH.
 👉 Útil para túneles tipo VPN.
@@ -110,7 +118,7 @@ Crea un proxy SOCKS5 en tu máquina local, que redirige tráfico hacia cualquier
 ssh -D [puerto_local] usuario@servidor
 ```
 
-Ejemplo:
+#### Ejemplo:
 
 ```bash
 ssh -D 1080 user@remote_host
@@ -123,7 +131,7 @@ Opcional: usar proxychains para tunelizar cualquier programa:
 proxychains nmap -sT 10.10.10.10
 ```
 
-4. Reverse SOCKS Proxy (más avanzado)
+### 4. Reverse SOCKS Proxy (más avanzado)
 
 Si queremos crear un SOCKS proxy en el servidor remoto para salir por tu máquina:
 
@@ -131,7 +139,7 @@ Si queremos crear un SOCKS proxy en el servidor remoto para salir por tu máquin
 ssh -R 1080 user@remote_host -N -D 1080
 ```
 
-5. Opciones útiles
+### 5. Opciones útiles
 
 ```bash
 -N: No abrir shell, solo el túnel.
@@ -145,7 +153,7 @@ ssh -R 1080 user@remote_host -N -D 1080
 -g: Permitir que otros accedan al túnel.
 ```
 
-Ejemplo:
+#### Ejemplo:
 
 ```bash
 ssh -f -N -L 8080:intranet.local:80 user@remote_host
@@ -159,4 +167,23 @@ ssh -f -N -L 8080:intranet.local:80 user@remote_host
 | Remote  | `-R`   | Remoto → Local | `ssh -R 8080:127.0.0.1:8000 user@remote`    |
 | Dynamic | `-D`   | Proxy (SOCKS)  | `ssh -D 1080 user@remote`                   |
 
+## Ligolo
 
+### Proxy (kali)
+```bash
+ ligolo-proxy -selfcert -laddr 0.0.0.0:11601 -v 
+ autoroute
+ # etc
+```
+### Agent (victima)
+
+```bash
+agent -connect <KALI-IP>:11601 -ignore-cert
+```
+
+### Servidor para transferencia de archivos
+
+```bash
+# Agregar listener
+listener_add --addr <ip_destino:puerto> --to <ip_kali:puerto> --tcp
+```

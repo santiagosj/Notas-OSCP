@@ -4,9 +4,6 @@
 # Importar el módulo
 Import-Module .\PowerView.ps1
 ```
-
----
-
 ## 🏢 Información del Dominio
 
 ```powershell
@@ -37,6 +34,10 @@ Get-NetDomain
 ```powershell
 # Listar todos los usuarios
 Get-DomainUser
+
+# Lista con filtros ej usuarios
+
+Get-DomainUser | select samaccountname
 
 # Información detallada de un usuario específico
 Get-DomainUser -Identity juanperez

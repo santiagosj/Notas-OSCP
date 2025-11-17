@@ -1,0 +1,6 @@
+[EAP-MSCHAPV2 ASLEAP user=testuser]	asleap -C 95:75:71:54:30:f5:78:d6 -R 47:06:7a:b8:d6:d7:18:74:fb:b2:d2:d0:f4:1b:92:0e:2f:4c:a9:71:a3:b0:2b:87
+[EAP-MSCHAPV2 JTR]	testuser:$NETNTLM$9575715430f578d6$47067ab8d6d71874fbb2d2d0f41b920e2f4ca971a3b02b87:::::::
+[EAP-MSCHAPV2 HASHCAT]	testuser::::47067ab8d6d71874fbb2d2d0f41b920e2f4ca971a3b02b87:9575715430f578d6
+[EAP-MSCHAPV2 ASLEAP user=testuser]	asleap -C ce:aa:be:77:4f:6a:6c:7b -R db:1b:be:e5:62:43:d3:d7:70:e6:68:44:63:af:df:48:d3:00:b7:ee:81:e3:80:9f
+[EAP-MSCHAPV2 JTR]	testuser:$NETNTLM$ceaabe774f6a6c7b$db1bbee56243d3d770e6684463afdf48d300b7ee81e3809f:::::::
+[EAP-MSCHAPV2 HASHCAT]	testuser::::db1bbee56243d3d770e6684463afdf48d300b7ee81e3809f:ceaabe774f6a6c7b

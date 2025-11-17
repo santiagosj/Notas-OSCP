@@ -1,0 +1,9 @@
+# beacon_wifi.cap
+set wifi.interface wlan0
+set wifi.ap.ssid WiFu
+set wifi.ap.bssid DE:AD:BE:EF:00:01
+set wifi.ap.channel 3
+set wifi.ap.encryption false
+wifi.recon on
+wifi.ap
+# dejarlo corriendo (ctrl+c en bettercap para parar)
