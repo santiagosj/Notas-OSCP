@@ -27,7 +27,7 @@ fi
 
 # Crear la nota
 sudo cp "$TEMPLATE_PATH" "$NOTE_PATH"
-sudo nano "$NOTE_PATH"
+sudo code "$NOTE_PATH" --no-sandbox --user-data-dir
 
 # Mensaje de commit con el ID de la nota
 COMMIT_MESSAGE="Add note: $CATEGORY/$FILENAME"

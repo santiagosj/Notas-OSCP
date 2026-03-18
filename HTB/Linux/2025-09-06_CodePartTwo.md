@@ -3,6 +3,7 @@
 ## Host: Linux
 ## IP: 10.10.11.82
 ## Procedimiento y comandos
+
 #### Paso 1: Enumeracions
 ```bash
 # Nmap 7.95 scan initiated Thu Sep  4 12:37:52 2025 as: /usr/lib/nmap/nmap -A -oN CodePartTwo-nmap.txt 10.10.11.82

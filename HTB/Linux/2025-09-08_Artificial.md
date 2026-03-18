@@ -389,7 +389,7 @@ udp        0      0 127.0.0.53:53           0.0.0.0:*                           
 #### ssh Port forwarding
 
 ```bash
-  ssh -L 8000:127.0.0.1:9898 -N -f gael@10.10.11.74
+ssh -L 8000:127.0.0.1:9898 -N -f gael@10.10.11.74
 gael@10.10.11.74's password: mattp005numbertwo
 ```
 Luego en el navegador podemos entrar a 127.0.0.1:8000 y tener acceso al servidor local. Al entrar vemos un formulario de login colocamos las credenciales de backrest_root.

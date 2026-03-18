@@ -1,5 +1,7 @@
 ## 🧠 Importar PowerView
 
+* [CheatSheet](https://1337skills.com/cheatsheets/powerview/#domain-enumeration)
+
 ```powershell
 # Importar el módulo
 Import-Module .\PowerView.ps1

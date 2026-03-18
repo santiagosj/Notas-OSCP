@@ -58,6 +58,8 @@ groups <usuario>
 ```bash
 find / -perm -4000 2>/dev/null                      # Binarios con SUID
 
+find / -type f -perm -g+rx -group <grupo> 2>/dev/null
+
 find / -perm -2000 2>/dev/null   	            # Binarios con SGID
 
 find / -perm -u=s -type f 2>/dev/null
@@ -136,7 +138,7 @@ find / -size 50M	# Especificacion de tamano de archivos: +100M (archivos mayores
 grep -rniI --include="*.conf" --include="*.ini" --include="*.yaml" --include="*.yml" --include="*.json" "PASSW\|PASSWD\|PASSWORD\|PWD" / 2>/dev/null
 
 # V2
-grep -rniI --include=*.{conf,ini,yaml,yml,json,php} "PASSW\|PASSWD\|PASSWORD\|PWD" / 2>/dev/null
+grep -rniI --include=*.{db,conf,ini,yaml,yml,json,php} "PASSW\|PASSWD\|PASSWORD\|PWD" / 2>/dev/null
 
 # Buscar en el directorio sobre el que estamos posicionados, ejemplo con .xml
 
@@ -215,6 +217,7 @@ ls -lah /etc/cron*           # Revisar cron jobs
 cat /etc/crontab            # Tareas programadas
 systemctl list-timers       # Timers activos
 systemctl list-timers --all
+grep "CRON" /var/log/syslog 
 ```
 
 ### 7️⃣ Variables de entorno
@@ -237,6 +240,7 @@ getcap -r / 2>/dev/null     # Binarios con capacidades especiales
 ```bash
 docker ps -a                # Contenedores en ejecución
 cat /etc/group | grep docker # Ver si el usuario está en el grupo docker
+find / -name docker.sock 2>/dev/null
 ls -la /var/run/docker.sock
 ```
 
